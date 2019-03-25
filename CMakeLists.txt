@@ -6,20 +6,30 @@ project(CppRl
     DESCRIPTION "Reinforcement learning in C++ using PyTorch"
 )
 
+set(CMAKE_CXX_STANDARD 17)
+
 find_package(Torch REQUIRED)
 
-add_library(CppRl SHARED)
+add_executable(cpprl)
 
 if(MSVC)
-    target_compile_options(CppRl PRIVATE /W4 /WX)
+    target_compile_options(cpprl PRIVATE /W4 /WX)
 else(MSVC)
-    target_compile_options(CppRl PRIVATE -Wall -Wextra -pedantic)
+    target_compile_options(cpprl PRIVATE -Wall -Wextra -pedantic)
 endif(MSVC)  
 
-target_include_directories(CppRl
+target_include_directories(cpprl
     PRIVATE
     include
     src
+    ${TORCH_INCLUDE_DIRS}
 )
+
+target_link_libraries(cpprl torch ${TORCH_LIBRARIES})
+
+message(STATUS "${TORCH_CXX_FLAGS}")
+if (TORCH_CXX_FLAGS)
+    set(CMAKE_CXX_FLAGS ${TORCH_CXX_FLAGS})
+endif()
 
 add_subdirectory(src)
