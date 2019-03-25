@@ -10,7 +10,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 find_package(Torch REQUIRED)
 
-add_executable(cpprl)
+add_executable(cpprl "")
 
 if(MSVC)
     target_compile_options(cpprl PRIVATE /W4 /WX)

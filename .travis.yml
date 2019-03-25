@@ -1,0 +1,24 @@
+dist: trusty
+language: c++
+compiler: gcc
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - gcc-8
+      - g++-8
+before_install:
+  # Install Cmake >= 3.10.0
+  - wget -O cmake.sh https://cmake.org/files/v3.10/cmake-3.10.0-rc1-Linux-x86_64.sh
+  - sudo sh cmake.sh --skip-license --exclude-subdir --prefix=/usr/local
+  # Install libtorch
+  - wget https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-latest.zip -O /tmp/libtorch.zip
+  - unzip /tmp/libtorch.zip -d /tmp/
+script:
+  # Print compiler versions
+  - gcc -v && g++ -v && cmake --version
+  # Build
+  - mkdir build && cd build
+  - /usr/local/bin/cmake -DCMAKE_PREFIX_PATH=/tmp/libtorch/ ..
+  - make
