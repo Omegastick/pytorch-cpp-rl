@@ -23,7 +23,7 @@ NNBase::NNBase(bool recurrent,
 
 PolicyImpl::PolicyImpl(c10::IntArrayRef /*observation_shape*/,
                        ActionSpace /*action_space*/,
-                       std::shared_ptr<NNBase> /*base*/) {}
+                       std::shared_ptr<NNBase> base) : base(base) {}
 
 std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor & /*inputs*/,
                                            torch::Tensor & /*rnn_hxs*/,
@@ -49,7 +49,8 @@ torch::Tensor PolicyImpl::get_values(torch::Tensor & /*inputs*/,
 
 CnnBase::CnnBase(unsigned int num_inputs,
                  bool recurrent,
-                 unsigned int hidden_size) : NNBase(recurrent, num_inputs, hidden_size) {}
+                 unsigned int hidden_size)
+    : NNBase(recurrent, num_inputs, hidden_size) {}
 
 std::vector<torch::Tensor> CnnBase::forward(torch::Tensor & /*inputs*/,
                                             torch::Tensor & /*hxs*/,
@@ -60,7 +61,8 @@ std::vector<torch::Tensor> CnnBase::forward(torch::Tensor & /*inputs*/,
 
 MlpBase::MlpBase(unsigned int num_inputs,
                  bool recurrent,
-                 unsigned int hidden_size) : NNBase(recurrent, num_inputs, hidden_size) {}
+                 unsigned int hidden_size)
+    : NNBase(recurrent, num_inputs, hidden_size) {}
 
 std::vector<torch::Tensor> MlpBase::forward(torch::Tensor & /*inputs*/,
                                             torch::Tensor & /*hxs*/,
@@ -86,7 +88,7 @@ TEST_CASE("MlpBase")
         auto masks = torch::zeros({4, 1});
         auto outputs = base.forward(inputs, hxs, masks);
 
-        CHECK(outputs.size() == 3);
+        REQUIRE(outputs.size() == 3);
 
         // Critic
         CHECK(outputs[0].size(0) == 4);
@@ -119,7 +121,7 @@ TEST_CASE("CnnBase")
         auto masks = torch::zeros({4, 1});
         auto outputs = base->forward(inputs, hxs, masks);
 
-        CHECK(outputs.size() == 3);
+        REQUIRE(outputs.size() == 3);
 
         // Critic
         CHECK(outputs[0].size(0) == 4);
@@ -153,7 +155,7 @@ TEST_CASE("Policy")
         auto masks = torch::zeros({4, 1});
         auto outputs = policy->act(inputs, hxs, masks);
 
-        CHECK(outputs.size() == 3);
+        REQUIRE(outputs.size() == 3);
 
         // Value
         CHECK(outputs[0].size(0) == 4);
@@ -180,7 +182,7 @@ TEST_CASE("Policy")
         auto actions = torch::rand({4, 5});
         auto outputs = policy->evaluate_actions(inputs, hxs, masks, actions);
 
-        CHECK(outputs.size() == 3);
+        REQUIRE(outputs.size() == 3);
 
         // Value
         CHECK(outputs[0].size(0) == 4);
