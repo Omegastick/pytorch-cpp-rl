@@ -39,7 +39,7 @@ class Policy : nn::Module
                                            torch::Tensor &masks);
 
   public:
-    Policy(IntArrayRef observation_shape,
+    Policy(c10::IntArrayRef observation_shape,
            ActionSpace action_space,
            NNBase &base);
 
