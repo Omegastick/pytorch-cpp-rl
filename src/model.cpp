@@ -28,15 +28,15 @@ NNBase::NNBase(bool recurrent,
         gru = register_module(
             "gru", nn::GRU(nn::GRUOptions(recurrent_input_size, hidden_size)));
         // Init weights
-        for (const auto &pair : gru->named_parameters())
+        for (const auto &parameter : gru->named_parameters())
         {
-            if (pair.key().find("bias") != std::string::npos)
+            if (parameter.key().find("bias") != std::string::npos)
             {
-                nn::init::constant_(pair.value(), 0);
+                nn::init::constant_(parameter.value(), 0);
             }
-            else if (pair.key().find("weight") != std::string::npos)
+            else if (parameter.key().find("weight") != std::string::npos)
             {
-                nn::init::orthogonal_(pair.value());
+                nn::init::orthogonal_(parameter.value());
             }
         }
     }
@@ -92,9 +92,25 @@ std::vector<torch::Tensor> MlpBase::forward(torch::Tensor & /*inputs*/,
     return std::vector<torch::Tensor>();
 }
 
+TEST_CASE("NNBase")
+{
+    auto base = std::make_shared<NNBase>(true, 5, 10);
+
+    SUBCASE("Bias weights are initialized to 0")
+    {
+        for (const auto &parameter : base->named_modules()["gru"]->named_parameters())
+        {
+            if (parameter.key().find("bias") != std::string::npos)
+            {
+                CHECK(parameter.value()[0].item().toDouble() == doctest::Approx(0));
+            }
+        }
+    }
+}
+
 TEST_CASE("MlpBase")
 {
-    MlpBase base = MlpBase(5, true, 10);
+    auto base = MlpBase(5, true, 10);
 
     SUBCASE("Sanity checks")
     {
@@ -161,7 +177,7 @@ TEST_CASE("CnnBase")
 TEST_CASE("Policy")
 {
     auto base = std::make_shared<MlpBase>(3, true, 10);
-    Policy policy = Policy(IntArrayRef{12}, ActionSpace{"Categorical", {5}}, base);
+    auto policy = Policy(IntArrayRef{12}, ActionSpace{"Categorical", {5}}, base);
 
     SUBCASE("Sanity checks")
     {

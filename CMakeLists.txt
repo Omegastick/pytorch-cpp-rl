@@ -23,14 +23,13 @@ else(MSVC)
 endif(MSVC)  
 
 set(CPPRL_INCLUDE_DIRS
-    PRIVATE
     include
     src
     ${TORCH_INCLUDE_DIRS}
 )
 
-target_include_directories(cpprl ${CPPRL_INCLUDE_DIRS})
-target_include_directories(cpprl_tests ${CPPRL_INCLUDE_DIRS})
+target_include_directories(cpprl PRIVATE ${CPPRL_INCLUDE_DIRS})
+target_include_directories(cpprl_tests PRIVATE ${CPPRL_INCLUDE_DIRS})
 
 target_link_libraries(cpprl torch ${TORCH_LIBRARIES})
 target_link_libraries(cpprl_tests torch ${TORCH_LIBRARIES})
