@@ -17,6 +17,7 @@ class NNBase : public nn::Module
   private:
     bool recurrent;
     unsigned int hidden_size;
+    nn::GRU gru;
 
   public:
     NNBase(bool recurrent,

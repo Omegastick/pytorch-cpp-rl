@@ -18,8 +18,29 @@ int NNBase::recurrent_hidden_state_size() const
 }
 
 NNBase::NNBase(bool recurrent,
-               unsigned int /*recurrent_input_size*/,
-               unsigned int hidden_size) : recurrent(recurrent), hidden_size(hidden_size) {}
+               unsigned int recurrent_input_size,
+               unsigned int hidden_size)
+    : recurrent(recurrent), hidden_size(hidden_size), gru(nullptr)
+{
+    // Init GRU
+    if (recurrent)
+    {
+        gru = register_module(
+            "gru", nn::GRU(nn::GRUOptions(recurrent_input_size, hidden_size)));
+        // Init weights
+        for (const auto &pair : gru->named_parameters())
+        {
+            if (pair.key().find("bias") != std::string::npos)
+            {
+                nn::init::constant_(pair.value(), 0);
+            }
+            else if (pair.key().find("weight") != std::string::npos)
+            {
+                nn::init::orthogonal_(pair.value());
+            }
+        }
+    }
+}
 
 PolicyImpl::PolicyImpl(c10::IntArrayRef /*observation_shape*/,
                        ActionSpace /*action_space*/,
