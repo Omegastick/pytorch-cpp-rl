@@ -8,15 +8,6 @@
 
 namespace cpprl
 {
-int NNBase::recurrent_hidden_state_size() const
-{
-    if (recurrent)
-    {
-        return hidden_size;
-    }
-    return 1;
-}
-
 NNBase::NNBase(bool recurrent,
                unsigned int recurrent_input_size,
                unsigned int hidden_size)
@@ -39,6 +30,84 @@ NNBase::NNBase(bool recurrent,
                 nn::init::orthogonal_(parameter.value());
             }
         }
+    }
+}
+
+unsigned int NNBase::get_hidden_size() const
+{
+    if (recurrent)
+    {
+        return hidden_size;
+    }
+    return 1;
+}
+
+std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor &x,
+                                               torch::Tensor &hxs,
+                                               torch::Tensor &masks)
+{
+    if (x.size(0) == hxs.size(0))
+    {
+        auto gru_output = gru->forward(x.unsqueeze(0),
+                                       (hxs * masks).unsqueeze(0));
+        return {gru_output.output.squeeze(0), gru_output.state.squeeze(0)};
+    }
+    else
+    {
+        // x is a (timesteps, agents, -1) tensor that has been flattened to
+        // (timesteps * agents, -1)
+        auto agents = hxs.size(0);
+        auto timesteps = x.size(0) / agents;
+
+        // Unflatten
+        x = x.view({timesteps, agents, x.size(1)});
+
+        // Same for masks
+        masks = masks.view({timesteps, agents});
+
+        // Figure out which steps in the sequence have a zero for any agent
+        // We assume the first timestep has a zero in it
+        auto has_zeros = (masks.index({torch::arange(1, masks.size(0), TensorOptions(ScalarType::Long))}) == 0)
+                             .any()
+                             .nonzero()
+                             .squeeze();
+
+        // +1 to correct the masks[1:]
+        has_zeros += 1;
+
+        // Add t=0 and t=timesteps to the list
+        // has_zeros = [0] + has_zeros + [timesteps]
+        has_zeros = has_zeros.contiguous().to(ScalarType::Float);
+        std::vector<float> has_zeros_vec(
+            has_zeros.data<float>(),
+            has_zeros.data<float>() + has_zeros.numel());
+        has_zeros_vec.insert(has_zeros_vec.begin(), {0});
+        has_zeros_vec.push_back(timesteps);
+
+        hxs = hxs.unsqueeze(0);
+        std::vector<torch::Tensor> outputs;
+        for (unsigned int i = 0; i < has_zeros_vec.size() - 1; ++i)
+        {
+            // We can now process steps that don't have any zeros in the masks
+            // together.
+            // Apparently this is much faster?
+            auto start_idx = has_zeros_vec[i];
+            auto end_idx = has_zeros_vec[i + 1];
+
+            auto gru_output = gru(
+                x.index(torch::arange(start_idx,
+                                      end_idx,
+                                      TensorOptions(ScalarType::Long))),
+                hxs * masks[start_idx].view({1, -1, 1}));
+
+            outputs.push_back(gru_output.output);
+        }
+
+        // x is a (timesteps, agents, -1) tensor
+        x = torch::cat(outputs);
+        hxs = hxs.squeeze(0);
+
+        return {x, hxs};
     }
 }
 
@@ -106,6 +175,44 @@ TEST_CASE("NNBase")
             }
         }
     }
+
+    SUBCASE("forward_gru() outputs correct shapes when given samples from one"
+            " agent")
+    {
+        auto inputs = torch::rand({4, 5});
+        auto hxs = torch::rand({4, 10});
+        auto masks = torch::zeros({4, 1});
+        auto outputs = base->forward_gru(inputs, hxs, masks);
+
+        REQUIRE(outputs.size() == 2);
+
+        // x
+        CHECK(outputs[0].size(0) == 4);
+        CHECK(outputs[0].size(1) == 10);
+
+        // hxs
+        CHECK(outputs[1].size(0) == 4);
+        CHECK(outputs[1].size(1) == 10);
+    }
+
+    SUBCASE("forward_gru() outputs correct shapes when given samples from "
+            "multiple agents")
+    {
+        auto inputs = torch::rand({12, 5});
+        auto hxs = torch::rand({4, 10});
+        auto masks = torch::zeros({12, 1});
+        auto outputs = base->forward_gru(inputs, hxs, masks);
+
+        REQUIRE(outputs.size() == 2);
+
+        // x
+        CHECK(outputs[0].size(0) == 12);
+        CHECK(outputs[0].size(1) == 10);
+
+        // hxs
+        CHECK(outputs[1].size(0) == 4);
+        CHECK(outputs[1].size(1) == 10);
+    }
 }
 
 TEST_CASE("MlpBase")
@@ -115,10 +222,10 @@ TEST_CASE("MlpBase")
     SUBCASE("Sanity checks")
     {
         CHECK(base.is_recurrent() == true);
-        CHECK(base.recurrent_hidden_state_size() == 10);
+        CHECK(base.get_hidden_size() == 10);
     }
 
-    SUBCASE("Output tensors are correct sizes")
+    SUBCASE("Output tensors are correct shapes")
     {
         auto inputs = torch::rand({4, 5});
         auto hxs = torch::rand({4, 10});
@@ -148,10 +255,10 @@ TEST_CASE("CnnBase")
     SUBCASE("Sanity checks")
     {
         CHECK(base->is_recurrent() == true);
-        CHECK(base->recurrent_hidden_state_size() == 10);
+        CHECK(base->get_hidden_size() == 10);
     }
 
-    SUBCASE("Output tensors are correct sizes")
+    SUBCASE("Output tensors are correct shapes")
     {
         auto inputs = torch::rand({4, 3, 84, 84});
         auto hxs = torch::rand({4, 10});
@@ -182,10 +289,10 @@ TEST_CASE("Policy")
     SUBCASE("Sanity checks")
     {
         CHECK(policy->is_recurrent() == true);
-        CHECK(policy->recurrent_hidden_state_size() == 10);
+        CHECK(policy->get_hidden_size() == 10);
     }
 
-    SUBCASE("act() output tensors are correct sizes")
+    SUBCASE("act() output tensors are correct shapes")
     {
         auto inputs = torch::rand({4, 3});
         auto hxs = torch::rand({4, 10});
@@ -211,7 +318,7 @@ TEST_CASE("Policy")
         CHECK(outputs[3].size(1) == 10);
     }
 
-    SUBCASE("evaluate_actions() output tensors are correct sizes")
+    SUBCASE("evaluate_actions() output tensors are correct shapes")
     {
         auto inputs = torch::rand({4, 3});
         auto hxs = torch::rand({4, 10});
@@ -237,7 +344,7 @@ TEST_CASE("Policy")
         CHECK(outputs[3].size(1) == 10);
     }
 
-    SUBCASE("get_values() output tensor is correct size")
+    SUBCASE("get_values() output tensor is correct shapes")
     {
         auto inputs = torch::rand({4, 3});
         auto hxs = torch::rand({4, 10});

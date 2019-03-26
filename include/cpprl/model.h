@@ -24,7 +24,10 @@ class NNBase : public nn::Module
            unsigned int recurrent_input_size,
            unsigned int hidden_size);
 
-    int recurrent_hidden_state_size() const;
+    std::vector<torch::Tensor> forward_gru(torch::Tensor &x,
+                                           torch::Tensor &hxs,
+                                           torch::Tensor &masks);
+    unsigned int get_hidden_size() const;
 
     inline bool is_recurrent() const { return recurrent; }
 };
@@ -56,9 +59,9 @@ class PolicyImpl : public nn::Module
                              torch::Tensor &masks) const;
 
     inline bool is_recurrent() const { return base->is_recurrent(); }
-    inline int recurrent_hidden_state_size() const
+    inline unsigned int get_hidden_size() const
     {
-        return base->recurrent_hidden_state_size();
+        return base->get_hidden_size();
     }
 };
 TORCH_MODULE(Policy);
