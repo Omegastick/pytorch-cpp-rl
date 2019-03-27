@@ -12,20 +12,20 @@ namespace cpprl
 PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
     : base(base)
 {
-    int num_outputs;
+    // int num_outputs;
     if (action_space.type == "Discrete")
     {
-        num_outputs = action_space.shape[0];
+        // num_outputs = action_space.shape[0];
         // self.dist = Categorical(self.base.output_size, num_outputs)
     }
     else if (action_space.type == "Box")
     {
-        num_outputs = action_space.shape[0];
+        // num_outputs = action_space.shape[0];
         // self.dist = DiagGaussian(self.base.output_size, num_outputs)
     }
     else if (action_space.type == "MultiBinary")
     {
-        num_outputs = action_space.shape[0];
+        // num_outputs = action_space.shape[0];
         // self.dist = Bernoulli(self.base.output_size, num_outputs)
     }
     else

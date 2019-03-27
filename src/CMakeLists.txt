@@ -1,2 +1,3 @@
+add_subdirectory(distributions)
 add_subdirectory(model)
 add_subdirectory(third_party)
