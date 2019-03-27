@@ -68,7 +68,7 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor &x,
         // Figure out which steps in the sequence have a zero for any agent
         // We assume the first timestep has a zero in it
         auto has_zeros = (masks.index({torch::arange(1, masks.size(0), TensorOptions(ScalarType::Long))}) == 0)
-                             .any()
+                             .any(-1)
                              .nonzero()
                              .squeeze();
 
@@ -95,16 +95,17 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor &x,
             auto end_idx = has_zeros_vec[i + 1];
 
             auto gru_output = gru(
-                x.index(torch::arange(start_idx,
-                                      end_idx,
-                                      TensorOptions(ScalarType::Long))),
+                x.index({torch::arange(start_idx,
+                                       end_idx,
+                                       TensorOptions(ScalarType::Long))}),
                 hxs * masks[start_idx].view({1, -1, 1}));
 
             outputs.push_back(gru_output.output);
         }
 
         // x is a (timesteps, agents, -1) tensor
-        x = torch::cat(outputs);
+        x = torch::cat(outputs, 1).squeeze(0);
+        std::cout << x << std::endl;
         hxs = hxs.squeeze(0);
 
         return {x, hxs};
