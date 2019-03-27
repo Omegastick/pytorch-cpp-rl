@@ -1,4 +1,5 @@
 #include <memory>
+#include <math.h>
 
 #include <torch/torch.h>
 
@@ -6,8 +7,25 @@
 #include "cpprl/model.h"
 #include "cpprl/spaces.h"
 
+using namespace torch;
+
 namespace cpprl
 {
+void init(torch::OrderedDict<std::string, torch::Tensor> parameters, double gain)
+{
+    for (const auto &parameter : parameters)
+    {
+        if (parameter.key().find("bias") != std::string::npos)
+        {
+            nn::init::constant_(parameter.value(), gain);
+        }
+        else if (parameter.key().find("weight") != std::string::npos)
+        {
+            nn::init::orthogonal_(parameter.value());
+        }
+    }
+}
+
 NNBase::NNBase(bool recurrent,
                unsigned int recurrent_input_size,
                unsigned int hidden_size)
@@ -19,17 +37,7 @@ NNBase::NNBase(bool recurrent,
         gru = register_module(
             "gru", nn::GRU(nn::GRUOptions(recurrent_input_size, hidden_size)));
         // Init weights
-        for (const auto &parameter : gru->named_parameters())
-        {
-            if (parameter.key().find("bias") != std::string::npos)
-            {
-                nn::init::constant_(parameter.value(), 0);
-            }
-            else if (parameter.key().find("weight") != std::string::npos)
-            {
-                nn::init::orthogonal_(parameter.value());
-            }
-        }
+        init(gru->named_parameters(), 0);
     }
 }
 
@@ -105,7 +113,6 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor &x,
 
         // x is a (timesteps, agents, -1) tensor
         x = torch::cat(outputs, 1).squeeze(0);
-        std::cout << x << std::endl;
         hxs = hxs.squeeze(0);
 
         return {x, hxs};
@@ -153,7 +160,27 @@ std::vector<torch::Tensor> CnnBase::forward(torch::Tensor & /*inputs*/,
 MlpBase::MlpBase(unsigned int num_inputs,
                  bool recurrent,
                  unsigned int hidden_size)
-    : NNBase(recurrent, num_inputs, hidden_size) {}
+    : NNBase(recurrent, num_inputs, hidden_size),
+      actor(register_module(
+          "actor", nn::Sequential(
+                       nn::Linear(num_inputs, hidden_size),
+                       nn::Functional(torch::tanh),
+                       nn::Linear(hidden_size, hidden_size),
+                       nn::Functional(torch::tanh)))),
+      critic(register_module(
+          "critic", nn::Sequential(
+                        nn::Linear(num_inputs, hidden_size),
+                        nn::Functional(torch::tanh),
+                        nn::Linear(hidden_size, hidden_size),
+                        nn::Functional(torch::tanh)))),
+      critic_linear(register_module("critic_linear", nn::Linear(hidden_size, 1)))
+{
+    init(actor->named_parameters(), sqrt(2));
+    init(critic->named_parameters(), sqrt(2));
+    init(critic_linear->named_parameters(), sqrt(2));
+
+    train();
+}
 
 std::vector<torch::Tensor> MlpBase::forward(torch::Tensor & /*inputs*/,
                                             torch::Tensor & /*hxs*/,
@@ -168,7 +195,8 @@ TEST_CASE("NNBase")
 
     SUBCASE("Bias weights are initialized to 0")
     {
-        for (const auto &parameter : base->named_modules()["gru"]->named_parameters())
+        for (const auto &parameter :
+             base->named_modules()["gru"]->named_parameters())
         {
             if (parameter.key().find("bias") != std::string::npos)
             {

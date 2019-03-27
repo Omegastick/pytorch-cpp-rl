@@ -85,9 +85,9 @@ class CnnBase : public NNBase
 class MlpBase : public NNBase
 {
   private:
-    std::unique_ptr<nn::Module> actor;
-    std::unique_ptr<nn::Module> critic;
-    std::unique_ptr<nn::Module> critic_linear;
+    nn::Sequential actor;
+    nn::Sequential critic;
+    nn::Linear critic_linear;
 
   public:
     MlpBase(unsigned int num_inputs,
