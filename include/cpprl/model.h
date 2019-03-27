@@ -43,9 +43,7 @@ class PolicyImpl : public nn::Module
                                            torch::Tensor masks);
 
   public:
-    PolicyImpl(c10::IntArrayRef observation_shape,
-               ActionSpace action_space,
-               std::shared_ptr<NNBase> base);
+    PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base);
 
     std::vector<torch::Tensor> act(torch::Tensor inputs,
                                    torch::Tensor rnn_hxs,
