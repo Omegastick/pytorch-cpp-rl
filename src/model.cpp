@@ -11,7 +11,7 @@ using namespace torch;
 
 namespace cpprl
 {
-void init(torch::OrderedDict<std::string, torch::Tensor> parameters, double gain)
+void init_weights(torch::OrderedDict<std::string, torch::Tensor> parameters, double gain)
 {
     for (const auto &parameter : parameters)
     {
@@ -37,7 +37,7 @@ NNBase::NNBase(bool recurrent,
         gru = register_module(
             "gru", nn::GRU(nn::GRUOptions(recurrent_input_size, hidden_size)));
         // Init weights
-        init(gru->named_parameters(), 0);
+        init_weights(gru->named_parameters(), 0);
     }
 }
 
@@ -175,9 +175,9 @@ MlpBase::MlpBase(unsigned int num_inputs,
                         nn::Functional(torch::tanh)))),
       critic_linear(register_module("critic_linear", nn::Linear(hidden_size, 1)))
 {
-    init(actor->named_parameters(), sqrt(2));
-    init(critic->named_parameters(), sqrt(2));
-    init(critic_linear->named_parameters(), sqrt(2));
+    init_weights(actor->named_parameters(), sqrt(2));
+    init_weights(critic->named_parameters(), sqrt(2));
+    init_weights(critic_linear->named_parameters(), sqrt(2));
 
     train();
 }
@@ -189,14 +189,18 @@ std::vector<torch::Tensor> MlpBase::forward(torch::Tensor & /*inputs*/,
     return std::vector<torch::Tensor>();
 }
 
-TEST_CASE("NNBase")
+TEST_CASE("init_weights()")
 {
-    auto base = std::make_shared<NNBase>(true, 5, 10);
+    auto module = nn::Sequential(
+        nn::Linear(5, 10),
+        nn::Functional(torch::relu),
+        nn::Linear(10, 8));
+
+    init_weights(module->named_parameters(), 0);
 
     SUBCASE("Bias weights are initialized to 0")
     {
-        for (const auto &parameter :
-             base->named_modules()["gru"]->named_parameters())
+        for (const auto &parameter : module->named_parameters())
         {
             if (parameter.key().find("bias") != std::string::npos)
             {
@@ -204,6 +208,11 @@ TEST_CASE("NNBase")
             }
         }
     }
+}
+
+TEST_CASE("NNBase")
+{
+    auto base = std::make_shared<NNBase>(true, 5, 10);
 
     SUBCASE("forward_gru() outputs correct shapes when given samples from one"
             " agent")
