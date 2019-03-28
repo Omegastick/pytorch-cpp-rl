@@ -1,6 +1,6 @@
 #include <torch/torch.h>
 
-#include "cpprl/model/mlpbase.h"
+#include "cpprl/model/mlp_base.h"
 #include "cpprl/model/model_utils.h"
 #include "third_party/doctest.h"
 
@@ -10,20 +10,21 @@ MlpBase::MlpBase(unsigned int num_inputs,
                  bool recurrent,
                  unsigned int hidden_size)
     : NNBase(recurrent, num_inputs, hidden_size),
-      actor(register_module(
-          "actor", nn::Sequential(
-                       nn::Linear(num_inputs, hidden_size),
-                       nn::Functional(torch::tanh),
-                       nn::Linear(hidden_size, hidden_size),
-                       nn::Functional(torch::tanh)))),
-      critic(register_module(
-          "critic", nn::Sequential(
-                        nn::Linear(num_inputs, hidden_size),
-                        nn::Functional(torch::tanh),
-                        nn::Linear(hidden_size, hidden_size),
-                        nn::Functional(torch::tanh)))),
-      critic_linear(register_module("critic_linear", nn::Linear(hidden_size, 1)))
+      actor(
+          nn::Linear(num_inputs, hidden_size),
+          nn::Functional(torch::tanh),
+          nn::Linear(hidden_size, hidden_size),
+          nn::Functional(torch::tanh)),
+      critic(nn::Linear(num_inputs, hidden_size),
+             nn::Functional(torch::tanh),
+             nn::Linear(hidden_size, hidden_size),
+             nn::Functional(torch::tanh)),
+      critic_linear(hidden_size, 1)
 {
+    register_module("actor", actor);
+    register_module("critic", critic);
+    register_module("critic_linear", critic_linear);
+
     init_weights(actor->named_parameters(), sqrt(2.));
     init_weights(critic->named_parameters(), sqrt(2.));
     init_weights(critic_linear->named_parameters(), sqrt(2.));

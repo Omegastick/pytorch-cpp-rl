@@ -1,7 +1,7 @@
 #include <torch/torch.h>
 
 #include "cpprl/model/policy.h"
-#include "cpprl/model/mlpbase.h"
+#include "cpprl/model/mlp_base.h"
 #include "cpprl/spaces.h"
 #include "third_party/doctest.h"
 

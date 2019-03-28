@@ -1,6 +1,6 @@
 #include <torch/torch.h>
 
-#include "cpprl/model/nnbase.h"
+#include "cpprl/model/nn_base.h"
 #include "cpprl/model/model_utils.h"
 #include "third_party/doctest.h"
 
@@ -16,8 +16,8 @@ NNBase::NNBase(bool recurrent,
     // Init GRU
     if (recurrent)
     {
-        gru = register_module(
-            "gru", nn::GRU(nn::GRUOptions(recurrent_input_size, hidden_size)));
+        gru = nn::GRU(nn::GRUOptions(recurrent_input_size, hidden_size));
+        register_module("gru", gru);
         // Init weights
         init_weights(gru->named_parameters(), 0);
     }

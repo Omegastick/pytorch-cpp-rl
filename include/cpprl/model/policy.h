@@ -5,7 +5,7 @@
 
 #include <torch/torch.h>
 
-#include "cpprl/model/nnbase.h"
+#include "cpprl/model/nn_base.h"
 #include "cpprl/model/output_layers.h"
 
 using namespace torch;

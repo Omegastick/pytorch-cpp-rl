@@ -10,7 +10,7 @@ using namespace torch;
 
 namespace cpprl
 {
-class OutputLayer : nn::Module
+class OutputLayer : public nn::Module
 {
   public:
     virtual ~OutputLayer() = 0;
@@ -20,7 +20,7 @@ class OutputLayer : nn::Module
 
 inline OutputLayer::~OutputLayer() {}
 
-class CategoricalOutput : OutputLayer
+class CategoricalOutput : public OutputLayer
 {
   private:
     nn::Linear linear;

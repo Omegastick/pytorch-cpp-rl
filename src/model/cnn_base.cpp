@@ -1,6 +1,6 @@
 #include <torch/torch.h>
 
-#include "cpprl/model/cnnbase.h"
+#include "cpprl/model/cnn_base.h"
 #include "cpprl/model/model_utils.h"
 #include "third_party/doctest.h"
 
@@ -10,19 +10,20 @@ CnnBase::CnnBase(unsigned int num_inputs,
                  bool recurrent,
                  unsigned int hidden_size)
     : NNBase(recurrent, hidden_size, hidden_size),
-      main(register_module(
-          "main", nn::Sequential(
-                      nn::Conv2d(nn::Conv2dOptions(num_inputs, 32, 8).stride(4)),
-                      nn::Functional(torch::relu),
-                      nn::Conv2d(nn::Conv2dOptions(32, 64, 4).stride(2)),
-                      nn::Functional(torch::relu),
-                      nn::Conv2d(nn::Conv2dOptions(64, 32, 3).stride(1)),
-                      nn::Functional(torch::relu),
-                      Flatten(),
-                      nn::Linear(32 * 7 * 7, hidden_size),
-                      nn::Functional(torch::relu)))),
-      critic_linear(register_module("critic_linear", nn::Linear(hidden_size, 1)))
+      main(nn::Conv2d(nn::Conv2dOptions(num_inputs, 32, 8).stride(4)),
+           nn::Functional(torch::relu),
+           nn::Conv2d(nn::Conv2dOptions(32, 64, 4).stride(2)),
+           nn::Functional(torch::relu),
+           nn::Conv2d(nn::Conv2dOptions(64, 32, 3).stride(1)),
+           nn::Functional(torch::relu),
+           Flatten(),
+           nn::Linear(32 * 7 * 7, hidden_size),
+           nn::Functional(torch::relu)),
+      critic_linear(nn::Linear(hidden_size, 1))
 {
+    register_module("main", main);
+    register_module("critic_linear", critic_linear);
+
     // Why this is commented out: https://github.com/pytorch/pytorch/issues/18518
     // init_weights(main->named_parameters(), sqrt(2.));
     init_weights(critic_linear->named_parameters(), 1);
