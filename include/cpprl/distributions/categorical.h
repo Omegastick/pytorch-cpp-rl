@@ -2,9 +2,11 @@
 
 #include <torch/torch.h>
 
+#include "cpprl/distributions/distribution.h"
+
 namespace cpprl
 {
-class Categorical
+class Categorical : public Distribution
 {
   private:
     torch::Tensor probs;

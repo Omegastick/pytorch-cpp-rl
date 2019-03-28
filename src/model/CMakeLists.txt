@@ -4,6 +4,7 @@ target_sources(cpprl
     ${CMAKE_CURRENT_LIST_DIR}/mlpbase.cpp
     ${CMAKE_CURRENT_LIST_DIR}/model_utils.cpp
     ${CMAKE_CURRENT_LIST_DIR}/nnbase.cpp
+    ${CMAKE_CURRENT_LIST_DIR}/output_layers.cpp
     ${CMAKE_CURRENT_LIST_DIR}/policy.cpp
 )
 
@@ -14,6 +15,7 @@ if (CPPRL_BUILD_TESTS)
         ${CMAKE_CURRENT_LIST_DIR}/mlpbase.cpp
         ${CMAKE_CURRENT_LIST_DIR}/model_utils.cpp
         ${CMAKE_CURRENT_LIST_DIR}/nnbase.cpp
+        ${CMAKE_CURRENT_LIST_DIR}/output_layers.cpp
         ${CMAKE_CURRENT_LIST_DIR}/policy.cpp
     )
 endif (CPPRL_BUILD_TESTS)

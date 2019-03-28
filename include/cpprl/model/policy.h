@@ -6,6 +6,7 @@
 #include <torch/torch.h>
 
 #include "cpprl/model/nnbase.h"
+#include "cpprl/model/output_layers.h"
 
 using namespace torch;
 
@@ -17,7 +18,7 @@ class PolicyImpl : public nn::Module
 {
   private:
     std::shared_ptr<NNBase> base;
-    // std::unique_ptr<Distribution> dist;
+    std::shared_ptr<OutputLayer> output_layer;
 
     std::vector<torch::Tensor> forward_gru(torch::Tensor x,
                                            torch::Tensor hxs,
