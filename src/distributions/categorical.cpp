@@ -20,7 +20,9 @@ Categorical::Categorical(const torch::Tensor *probs,
             throw std::exception();
         }
         this->probs = *probs / probs->sum(-1, true);
-        this->probs = probs->clamp(1e-9, 1. - 1e-9);
+        // 1.21e-7 is used as the epsilon to match PyTorch Python results as closely
+        // as possible
+        this->probs = probs->clamp(1.21e-7, 1. - 1.21e-7);
         this->logits = torch::log(this->probs);
     }
     else
@@ -44,10 +46,7 @@ Categorical::Categorical(const torch::Tensor *probs,
 
 torch::Tensor Categorical::entropy()
 {
-    std::cout << logits << std::endl;
-    std::cout << probs << std::endl;
     auto p_log_p = logits * probs;
-    std::cout << p_log_p << std::endl;
     return -p_log_p.sum(-1);
 }
 
@@ -66,9 +65,13 @@ std::vector<long> Categorical::extended_shape(torch::IntArrayRef sample_shape)
     return output_shape;
 }
 
-torch::Tensor Categorical::log_prob(torch::Tensor /*value*/)
+torch::Tensor Categorical::log_prob(torch::Tensor value)
 {
-    return torch::Tensor();
+    value = value.to(torch::ScalarType::Long).unsqueeze(-1);
+    auto broadcasted_tensors = torch::broadcast_tensors({value, logits});
+    value = broadcasted_tensors[0];
+    value = value.narrow(-1, 0, 1);
+    return broadcasted_tensors[1].gather(-1, value).squeeze(-1);
 }
 
 torch::Tensor Categorical::sample(torch::IntArrayRef sample_shape)
@@ -171,6 +174,37 @@ TEST_CASE("Categorical")
         SUBCASE("Output tensor is the correct size")
         {
             CHECK(entropies.sizes().vec() == std::vector<long>{2});
+        }
+    }
+
+    SUBCASE("log_prob()")
+    {
+        float probabilities[2][4] = {{0.5, 0.5, 0.0, 0.0},
+                                     {0.25, 0.25, 0.25, 0.25}};
+        auto probabilities_tensor = torch::from_blob(probabilities, {2, 4});
+        auto dist = Categorical(&probabilities_tensor, nullptr);
+
+        float actions[2][2] = {{0, 1},
+                               {2, 3}};
+        auto actions_tensor = torch::from_blob(actions, {2, 2});
+        auto log_probs = dist.log_prob(actions_tensor);
+
+        INFO(log_probs << "\n");
+        SUBCASE("Returns correct values")
+        {
+            CHECK(log_probs[0][0].item().toDouble() ==
+                  doctest::Approx(-0.6931).epsilon(1e-3));
+            CHECK(log_probs[0][1].item().toDouble() ==
+                  doctest::Approx(-1.3863).epsilon(1e-3));
+            CHECK(log_probs[1][0].item().toDouble() ==
+                  doctest::Approx(-15.9424).epsilon(1e-3));
+            CHECK(log_probs[1][1].item().toDouble() ==
+                  doctest::Approx(-1.3863).epsilon(1e-3));
+        }
+
+        SUBCASE("Output tensor is correct size")
+        {
+            CHECK(log_probs.sizes().vec() == std::vector<long>{2, 2});
         }
     }
 }
