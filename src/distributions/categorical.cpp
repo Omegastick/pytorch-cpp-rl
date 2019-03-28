@@ -20,6 +20,8 @@ Categorical::Categorical(const torch::Tensor *probs,
             throw std::exception();
         }
         this->probs = *probs / probs->sum(-1, true);
+        this->probs = probs->clamp(1e-9, 1. - 1e-9);
+        this->logits = torch::log(this->probs);
     }
     else
     {
@@ -28,6 +30,7 @@ Categorical::Categorical(const torch::Tensor *probs,
             throw std::exception();
         }
         this->logits = *logits - logits->logsumexp(-1, true);
+        this->probs = torch::softmax(this->logits, -1);
     }
 
     param = probs != nullptr ? *probs : *logits;
@@ -41,7 +44,11 @@ Categorical::Categorical(const torch::Tensor *probs,
 
 torch::Tensor Categorical::entropy()
 {
-    return torch::Tensor();
+    std::cout << logits << std::endl;
+    std::cout << probs << std::endl;
+    auto p_log_p = logits * probs;
+    std::cout << p_log_p << std::endl;
+    return -p_log_p.sum(-1);
 }
 
 std::vector<long> Categorical::extended_shape(torch::IntArrayRef sample_shape)
@@ -91,7 +98,7 @@ TEST_CASE("Categorical")
         CHECK_THROWS(Categorical(&tensor, &tensor));
     }
 
-    SUBCASE("Generated numbers are in the right range")
+    SUBCASE("Sampled numbers are in the right range")
     {
         float probabilities[] = {0.2, 0.2, 0.2, 0.2, 0.2};
         auto probabilities_tensor = torch::from_blob(probabilities, {5});
@@ -104,7 +111,7 @@ TEST_CASE("Categorical")
         CHECK(!less_than_0.any().item().toBool());
     }
 
-    SUBCASE("Generated tensors are of the right shape")
+    SUBCASE("Sampled tensors are of the right shape")
     {
         float probabilities[] = {0.2, 0.2, 0.2, 0.2, 0.2};
         auto probabilities_tensor = torch::from_blob(probabilities, {5});
@@ -117,9 +124,10 @@ TEST_CASE("Categorical")
 
     SUBCASE("Multi-dimensional input probabilities are handled correctly")
     {
-        SUBCASE("Generated tensors are of the right shape")
+        SUBCASE("Sampled tensors are of the right shape")
         {
-            float probabilities[2][4] = {{0.5, 0.5, 0.0, 0.0}, {0.25, 0.25, 0.25, 0.25}};
+            float probabilities[2][4] = {{0.5, 0.5, 0.0, 0.0},
+                                         {0.25, 0.25, 0.25, 0.25}};
             auto probabilities_tensor = torch::from_blob(probabilities, {2, 4});
             auto dist = Categorical(&probabilities_tensor, nullptr);
 
@@ -129,15 +137,40 @@ TEST_CASE("Categorical")
 
         SUBCASE("Generated tensors have correct probabilities")
         {
-            float probabilities[2][4] = {{0, 1, 0, 0}, {0, 0, 0, 1}};
+            float probabilities[2][4] = {{0, 1, 0, 0},
+                                         {0, 0, 0, 1}};
             auto probabilities_tensor = torch::from_blob(probabilities, {2, 4});
             auto dist = Categorical(&probabilities_tensor, nullptr);
 
-            auto output = dist.sample({20});
+            auto output = dist.sample({5});
             auto sum = output.sum({0});
 
-            CHECK(sum[0].item().toInt() == 20);
-            CHECK(sum[1].item().toInt() == 60);
+            CHECK(sum[0].item().toInt() == 5);
+            CHECK(sum[1].item().toInt() == 15);
+        }
+    }
+
+    SUBCASE("entropy()")
+    {
+        float probabilities[2][4] = {{0.5, 0.5, 0.0, 0.0},
+                                     {0.25, 0.25, 0.25, 0.25}};
+        auto probabilities_tensor = torch::from_blob(probabilities, {2, 4});
+        auto dist = Categorical(&probabilities_tensor, nullptr);
+
+        auto entropies = dist.entropy();
+
+        SUBCASE("Returns correct values")
+        {
+            CHECK(entropies[0].item().toDouble() ==
+                  doctest::Approx(0.6931).epsilon(1e-3));
+
+            CHECK(entropies[1].item().toDouble() ==
+                  doctest::Approx(1.3863).epsilon(1e-3));
+        }
+
+        SUBCASE("Output tensor is the correct size")
+        {
+            CHECK(entropies.sizes().vec() == std::vector<long>{2});
         }
     }
 }
