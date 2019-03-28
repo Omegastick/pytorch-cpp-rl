@@ -23,6 +23,16 @@ NNBase::NNBase(bool recurrent,
     }
 }
 
+// Do not use.
+//
+// Instantiate a subclass and use their's instead
+std::vector<torch::Tensor> NNBase::forward(torch::Tensor /*inputs*/,
+                                           torch::Tensor /*hxs*/,
+                                           torch::Tensor /*masks*/)
+{
+    return std::vector<torch::Tensor>();
+}
+
 unsigned int NNBase::get_hidden_size() const
 {
     if (recurrent)

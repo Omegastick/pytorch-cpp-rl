@@ -20,6 +20,9 @@ class NNBase : public nn::Module
            unsigned int recurrent_input_size,
            unsigned int hidden_size);
 
+    virtual std::vector<torch::Tensor> forward(torch::Tensor inputs,
+                                               torch::Tensor hxs,
+                                               torch::Tensor masks);
     std::vector<torch::Tensor> forward_gru(torch::Tensor x,
                                            torch::Tensor hxs,
                                            torch::Tensor masks);

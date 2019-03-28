@@ -2,6 +2,7 @@
 
 #include "cpprl/model/policy.h"
 #include "cpprl/model/mlp_base.h"
+#include "cpprl/model/output_layers.h"
 #include "cpprl/spaces.h"
 #include "third_party/doctest.h"
 
@@ -12,11 +13,12 @@ namespace cpprl
 PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
     : base(base)
 {
-    // int num_outputs;
+    int num_outputs;
     if (action_space.type == "Discrete")
     {
-        // num_outputs = action_space.shape[0];
-        // self.dist = Categorical(self.base.output_size, num_outputs)
+        num_outputs = action_space.shape[0];
+        output_layer = std::make_shared<CategoricalOutput>(
+            base->get_hidden_size(), num_outputs);
     }
     else if (action_space.type == "Box")
     {
@@ -34,11 +36,17 @@ PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
     }
 }
 
-std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor /*inputs*/,
-                                           torch::Tensor /*rnn_hxs*/,
-                                           torch::Tensor /*masks*/)
+std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
+                                           torch::Tensor rnn_hxs,
+                                           torch::Tensor masks)
 {
-    return std::vector<torch::Tensor>();
+    auto base_output = base->forward(inputs, rnn_hxs, masks);
+    auto dist = output_layer->forward(base_output[1]);
+
+    auto action = dist->sample().unsqueeze(-1);
+
+    auto action_log_probs = dist->log_prob(action);
+    return {base_output[0], action, action_log_probs, base_output[2]};
 }
 
 std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor /*inputs*/,
@@ -74,21 +82,29 @@ TEST_CASE("Policy")
         auto masks = torch::zeros({4, 1});
         auto outputs = policy->act(inputs, rnn_hxs, masks);
 
-        REQUIRE(outputs.size() == 3);
+        REQUIRE(outputs.size() == 4);
 
         // Value
+        INFO("Value: \n"
+             << outputs[0] << "\n");
         CHECK(outputs[0].size(0) == 4);
         CHECK(outputs[0].size(1) == 1);
 
         // Actions
+        INFO("Actions: \n"
+             << outputs[1] << "\n");
         CHECK(outputs[1].size(0) == 4);
-        CHECK(outputs[1].size(1) == 5);
+        CHECK(outputs[1].size(1) == 1);
 
         // Log probs
+        INFO("Log probs: \n"
+             << outputs[2] << "\n");
         CHECK(outputs[2].size(0) == 4);
-        CHECK(outputs[2].size(1) == 5);
+        CHECK(outputs[2].size(1) == 1);
 
         // Hidden states
+        INFO("Hidden states: \n"
+             << outputs[3] << "\n");
         CHECK(outputs[3].size(0) == 4);
         CHECK(outputs[3].size(1) == 10);
     }
@@ -101,7 +117,7 @@ TEST_CASE("Policy")
         auto actions = torch::rand({4, 5});
         auto outputs = policy->evaluate_actions(inputs, rnn_hxs, masks, actions);
 
-        REQUIRE(outputs.size() == 3);
+        REQUIRE(outputs.size() == 4);
 
         // Value
         CHECK(outputs[0].size(0) == 4);
