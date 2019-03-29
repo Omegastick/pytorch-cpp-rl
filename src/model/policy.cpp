@@ -43,10 +43,13 @@ std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
     auto base_output = base->forward(inputs, rnn_hxs, masks);
     auto dist = output_layer->forward(base_output[1]);
 
-    auto action = dist->sample().unsqueeze(-1);
+    auto action = dist->sample();
 
     auto action_log_probs = dist->log_prob(action);
-    return {base_output[0], action, action_log_probs, base_output[2]};
+    return {base_output[0], // value
+            action.unsqueeze(-1),
+            action_log_probs.unsqueeze(-1),
+            base_output[2]}; // rnn_hxs
 }
 
 std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor /*inputs*/,
