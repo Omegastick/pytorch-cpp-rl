@@ -44,20 +44,29 @@ std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
     auto dist = output_layer->forward(base_output[1]);
 
     auto action = dist->sample();
-
     auto action_log_probs = dist->log_prob(action);
+
     return {base_output[0], // value
             action.unsqueeze(-1),
             action_log_probs.unsqueeze(-1),
             base_output[2]}; // rnn_hxs
 }
 
-std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor /*inputs*/,
-                                                        torch::Tensor /*rnn_hxs*/,
-                                                        torch::Tensor /*masks*/,
-                                                        torch::Tensor /*actions*/)
+std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
+                                                        torch::Tensor rnn_hxs,
+                                                        torch::Tensor masks,
+                                                        torch::Tensor actions)
 {
-    return std::vector<torch::Tensor>();
+    auto base_output = base->forward(inputs, rnn_hxs, masks);
+    auto dist = output_layer->forward(base_output[1]);
+
+    auto action_log_probs = dist->log_prob(actions.squeeze(-1));
+    auto entropy = dist->entropy().mean();
+
+    return {base_output[0], // value
+            action_log_probs.unsqueeze(-1),
+            entropy,
+            base_output[2]}; // rnn_hxs
 }
 
 torch::Tensor PolicyImpl::get_values(torch::Tensor /*inputs*/,
@@ -117,23 +126,31 @@ TEST_CASE("Policy")
         auto inputs = torch::rand({4, 3});
         auto rnn_hxs = torch::rand({4, 10});
         auto masks = torch::zeros({4, 1});
-        auto actions = torch::rand({4, 5});
+        auto actions = torch::randint(5, {4, 1});
         auto outputs = policy->evaluate_actions(inputs, rnn_hxs, masks, actions);
 
         REQUIRE(outputs.size() == 4);
 
         // Value
+        INFO("Value: \n"
+             << outputs[0] << "\n");
         CHECK(outputs[0].size(0) == 4);
         CHECK(outputs[0].size(1) == 1);
 
         // Log probs
+        INFO("Log probs: \n"
+             << outputs[1] << "\n");
         CHECK(outputs[1].size(0) == 4);
-        CHECK(outputs[1].size(1) == 5);
+        CHECK(outputs[1].size(1) == 1);
 
         // Entropy
-        CHECK(outputs[2].size(0) == 1);
+        INFO("Entropy: \n"
+             << outputs[2] << "\n");
+        CHECK(outputs[2].sizes().size() == 0);
 
         // Hidden states
+        INFO("Hidden states: \n"
+             << outputs[3] << "\n");
         CHECK(outputs[3].size(0) == 4);
         CHECK(outputs[3].size(1) == 10);
     }
