@@ -40,7 +40,12 @@ RolloutStorage::RolloutStorage(unsigned int num_steps,
     masks = torch::ones({num_steps + 1, num_processes, 1});
 }
 
-void RolloutStorage::after_update() {}
+void RolloutStorage::after_update()
+{
+    observations[0].copy_(observations[-1]);
+    hidden_states[0].copy_(hidden_states[-1]);
+    masks[0].copy_(masks[-1]);
+}
 
 void RolloutStorage::compute_returns(torch::Tensor /*next_value*/,
                                      bool /*use_gae*/,
@@ -262,6 +267,57 @@ TEST_CASE("RolloutStorage")
             CHECK(storage.get_returns()[3][1].item().toDouble() ==
                   doctest::Approx(1));
         }
+    }
+
+    SUBCASE("after_update() copies last observation, hidden state and mask to "
+            "the 0th timestep")
+    {
+        RolloutStorage storage(3, 2, {3}, ActionSpace{"Discrete", {3}}, 2);
+
+        std::vector<float> obs{0, 1, 2, 1, 2, 3};
+        std::vector<float> hidden_states{0, 1, 0, 1};
+        std::vector<int> masks{0, 1};
+        storage.insert(torch::from_blob(&obs[0], {2, 3}),
+                       torch::from_blob(&hidden_states[0], {2, 2}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::from_blob(&masks[0], {2, 1}));
+        obs = {0, 1, 2, 1, 2, 3};
+        hidden_states = {0, 1, 0, 1};
+        masks = {0, 1};
+        storage.insert(torch::from_blob(&obs[0], {2, 3}),
+                       torch::from_blob(&hidden_states[0], {2, 2}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::from_blob(&masks[0], {2, 1}));
+        obs = {5, 6, 7, 7, 8, 9};
+        hidden_states = {1, 2, 3, 4};
+        masks = {0, 0};
+        storage.insert(torch::from_blob(&obs[0], {2, 3}),
+                       torch::from_blob(&hidden_states[0], {2, 2}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::zeros({2, 1}),
+                       torch::from_blob(&masks[0], {2, 1}));
+        storage.after_update();
+
+        INFO("Observations: \n"
+             << storage.get_observations() << "\n");
+        CHECK(storage.get_observations()[0][0][1].item().toDouble() ==
+              doctest::Approx(6));
+        INFO("Hidden_states: \n"
+             << storage.get_hidden_states() << "\n");
+        CHECK(storage.get_hidden_states()[0][0][1].item().toDouble() ==
+              doctest::Approx(2));
+        INFO("Masks: \n"
+             << storage.get_masks() << "\n");
+        CHECK(storage.get_masks()[0][0][0].item().toDouble() ==
+              doctest::Approx(0));
     }
 }
 }
