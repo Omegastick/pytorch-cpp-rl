@@ -47,13 +47,24 @@ void RolloutStorage::compute_returns(torch::Tensor /*next_value*/,
                                      double /*gamma*/,
                                      double /*tau*/) {}
 
-void RolloutStorage::insert(torch::Tensor /*observation*/,
-                            torch::Tensor /*hidden_state*/,
-                            torch::Tensor /*action*/,
-                            torch::Tensor /*action_log_prob*/,
-                            torch::Tensor /*value_prediction*/,
-                            torch::Tensor /*reward*/,
-                            torch::Tensor /*mask*/) {}
+void RolloutStorage::insert(torch::Tensor observation,
+                            torch::Tensor hidden_state,
+                            torch::Tensor action,
+                            torch::Tensor action_log_prob,
+                            torch::Tensor value_prediction,
+                            torch::Tensor reward,
+                            torch::Tensor mask)
+{
+    observations[step + 1].copy_(observation);
+    hidden_states[step + 1].copy_(hidden_state);
+    actions[step].copy_(action);
+    action_log_probs[step].copy_(action_log_prob);
+    value_predictions[step].copy_(value_prediction);
+    rewards[step].copy_(reward);
+    masks[step + 1].copy_(mask);
+
+    step = (step + 1) % num_steps;
+}
 
 void RolloutStorage::to(torch::Device device)
 {
@@ -133,28 +144,40 @@ TEST_CASE("RolloutStorage")
     SUBCASE("insert() inserts values")
     {
         RolloutStorage storage(3, 4, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
-        storage.insert(torch::rand({3, 5, 2}) + 1,
-                       torch::rand({3, 10}) + 1,
-                       torch::randint(1, 3, {3, 1}),
-                       torch::rand({3, 1}) + 1,
-                       torch::rand({3, 1}) + 1,
-                       torch::rand({3, 1}) + 1,
-                       torch::ones({3, 1}));
+        storage.insert(torch::rand({4, 5, 2}) + 1,
+                       torch::rand({4, 10}) + 1,
+                       torch::randint(1, 3, {4, 1}),
+                       torch::rand({4, 1}) + 1,
+                       torch::rand({4, 1}) + 1,
+                       torch::rand({4, 1}) + 1,
+                       torch::zeros({4, 1}));
 
-        CHECK(storage.get_observations()[0][0][0][0].item().toDouble() !=
+        INFO("Observations: \n"
+             << storage.get_observations() << "\n");
+        CHECK(storage.get_observations()[1][0][0][0].item().toDouble() !=
               doctest::Approx(0));
-        CHECK(storage.get_hidden_states()[0][0][0].item().toDouble() !=
+        INFO("Hidden states: \n"
+             << storage.get_hidden_states() << "\n");
+        CHECK(storage.get_hidden_states()[1][0][0].item().toDouble() !=
               doctest::Approx(0));
-        CHECK(storage.get_actions()[0][0][0].item().toDouble() !=
-              doctest::Approx(0));
+        INFO("Actions: \n"
+             << storage.get_actions() << "\n");
+        CHECK(storage.get_actions()[0][0][0].item().toInt() != 0);
+        INFO("Action log probs: \n"
+             << storage.get_action_log_probs() << "\n");
         CHECK(storage.get_action_log_probs()[0][0][0].item().toDouble() !=
               doctest::Approx(0));
+        INFO("Value predictions: \n"
+             << storage.get_value_predictions() << "\n");
         CHECK(storage.get_value_predictions()[0][0][0].item().toDouble() !=
               doctest::Approx(0));
+        INFO("Rewards: \n"
+             << storage.get_rewards() << "\n");
         CHECK(storage.get_rewards()[0][0][0].item().toDouble() !=
               doctest::Approx(0));
-        CHECK(storage.get_masks()[0][0][0].item().toDouble() !=
-              doctest::Approx(0));
+        INFO("Masks: \n"
+             << storage.get_masks() << "\n");
+        CHECK(storage.get_masks()[1][0][0].item().toInt() != 1);
     }
 
     SUBCASE("compute_returns()")

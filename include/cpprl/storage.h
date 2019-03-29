@@ -35,14 +35,14 @@ class RolloutStorage
                          double gamma,
                          double tau);
 
-    inline torch::Tensor get_actions() const { return actions; }
-    inline torch::Tensor get_action_log_probs() const { return action_log_probs; }
-    inline torch::Tensor get_hidden_states() const { return hidden_states; }
-    inline torch::Tensor get_masks() const { return masks; }
-    inline torch::Tensor get_observations() const { return observations; }
-    inline torch::Tensor get_returns() const { return returns; }
-    inline torch::Tensor get_rewards() const { return rewards; }
-    inline torch::Tensor get_value_predictions() const
+    inline const torch::Tensor &get_actions() const { return actions; }
+    inline const torch::Tensor &get_action_log_probs() const { return action_log_probs; }
+    inline const torch::Tensor &get_hidden_states() const { return hidden_states; }
+    inline const torch::Tensor &get_masks() const { return masks; }
+    inline const torch::Tensor &get_observations() const { return observations; }
+    inline const torch::Tensor &get_returns() const { return returns; }
+    inline const torch::Tensor &get_rewards() const { return rewards; }
+    inline const torch::Tensor &get_value_predictions() const
     {
         return value_predictions;
     }
