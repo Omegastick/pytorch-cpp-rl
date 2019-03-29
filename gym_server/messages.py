@@ -18,21 +18,29 @@ class Message(ABC):
         pass
 
 
+class MakeMessage(Message):
+    """
+    Builds the JSON for returning the result of an make_env() action.
+    """
+
+    def to_msg(self) -> bytes:
+        request = {
+            "result": "OK"
+        }
+        return msgpack.packb(request)
+
+
 class ResetMessage(Message):
     """
     Builds the JSON for returning the result of an env.reset() action.
     """
 
-    def __init__(self,
-                 observation: np.ndarray):
+    def __init__(self, observation: np.ndarray):
         self.observation = observation
 
     def to_msg(self) -> bytes:
         request = {
-            "method": "step",
-            "param": {
-                "observation": self.observation.tolist()
-            }
+            "observation": self.observation.tolist()
         }
         return msgpack.packb(request)
 
@@ -45,21 +53,15 @@ class StepMessage(Message):
     def __init__(self,
                  observation: np.ndarray,
                  reward: np.ndarray,
-                 done: np.ndarray,
-                 info: np.ndarray):
+                 done: np.ndarray):
         self.observation = observation
         self.reward = reward
         self.done = done
-        self.info = info
 
     def to_msg(self) -> bytes:
         request = {
-            "method": "step",
-            "param": {
-                "observation": self.observation.tolist(),
-                "reward": self.reward.tolist(),
-                "done": self.done.tolist(),
-                "info": self.info.tolist()
-            }
+            "observation": self.observation.tolist(),
+            "reward": self.reward.tolist(),
+            "done": self.done.tolist()
         }
         return msgpack.packb(request)

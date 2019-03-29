@@ -5,9 +5,10 @@ import logging
 from typing import Tuple
 import numpy as np
 from baselines.common.cmd_util import make_vec_env
+from gym.spaces.discrete import Discrete
 
 from gym_server.zmq_client import ZmqClient
-from gym_server.messages import ResetMessage, StepMessage
+from gym_server.messages import MakeMessage, ResetMessage, StepMessage
 
 
 RUNNING_REWARD_HORIZON = 10
@@ -43,6 +44,7 @@ class Server:
             if method == "make":
                 self.__make(param["env_name"], param["env_type"],
                             param["num_envs"])
+                self.zmq_client.send(MakeMessage())
 
             elif method == "reset":
                 observation = self.__reset()
@@ -51,11 +53,11 @@ class Server:
             elif method == "step":
                 if "render" in param:
                     result = self.__step(
-                        np.array(param["actions"], param["render"]))
+                        np.array(param["actions"]), param["render"])
                 else:
                     result = self.__step(np.array(param["actions"]))
                 self.zmq_client.send(StepMessage(result[0], result[1],
-                                                 result[2], result[3]))
+                                                 result[2]))
 
     def make(self, env_name, env_type, num_envs):
         """
@@ -69,7 +71,7 @@ class Server:
         """
         Resets the environments.
         """
-        logging.info("Reseting environments")
+        logging.info("Resetting environments")
         return self.env.reset()
 
     def step(self,
@@ -79,7 +81,12 @@ class Server:
         """
         Steps the environments.
         """
+        if isinstance(self.env.action_space, Discrete):
+            actions = actions.squeeze(-1)
         observation, reward, done, info = self.env.step(actions)
+        if isinstance(self.env.action_space, Discrete):
+            reward = np.expand_dims(reward, -1)
+            done = np.expand_dims(done, -1)
         if render:
             self.env.render()
         return observation, reward, done, info

@@ -24,10 +24,17 @@ def main():
                         datefmt='%Y%m%d %H:%M:%S')
     logging.info("Initializing gym server")
 
-    zmq_client = ZmqClient()
+    zmq_client = ZmqClient(10201)
+    logging.info("Connecting to client")
+    zmq_client.send("Connection established")
+    logging.info("Connected")
     server = Server(zmq_client)
 
-    server.serve()
+    try:
+        server.serve()
+    except:  # pylint: disable=bare-except
+        import pdb
+        pdb.post_mortem()
 
 
 if __name__ == '__main__':

@@ -45,5 +45,8 @@ target_include_directories(cpprl_tests PRIVATE ${CPPRL_INCLUDE_DIRS})
 target_link_libraries(cpprl torch ${TORCH_LIBRARIES})
 target_link_libraries(cpprl_tests torch ${TORCH_LIBRARIES})
 
+# Example
+add_subdirectory(example)
+
 # Recurse into source tree
 add_subdirectory(src)

@@ -10,28 +10,31 @@ from gym_server.messages import Message
 
 class ZmqClient:
     """
-    Class for connecting to and communicating with pytorch-cpp-rl.
+    Provides a ZeroMQ interface for communicating with client.
     """
 
-    def __init__(self, url: str = 'tcp://127.0.0.1:10201'):
+    def __init__(self, port: int):
         context = zmq.Context()
         self.socket = context.socket(zmq.PAIR)
-        logging.info("Waiting for connection to client")
-        self.socket.connect(url)
-        self.socket.send_string("Establishing connection...")
-        logging.info(self.socket.recv_string())
+        self.socket.bind(f"tcp://*:{port}")
 
-    def receive(self) -> dict:
+    def receive(self) -> bytes:
         """
-        Waits for a message from pytorch-cpp-rl.
-        Returns the received message obejct in dictionary form.
+        Gets a message from the client.
+        Blocks until a message is received.
         """
-        msg = self.socket.recv()
-        response = msgpack.unpackb(msg, raw=False)
+        message = self.socket.recv()
+        try:
+            response = msgpack.unpackb(message, raw=False)
+        except msgpack.exceptions.ExtraData:
+            response = message
         return response
 
-    def send(self, message: Message):
+    def send(self, message: object):
         """
-        Sends a message to the server.
+        Sends a message to the client.
         """
-        self.socket.send(message.to_msg())
+        if isinstance(message, str):
+            self.socket.send_string(message)
+        else:
+            self.socket.send(message.to_msg())
