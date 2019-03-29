@@ -6,11 +6,39 @@
 
 namespace cpprl
 {
-RolloutStorage::RolloutStorage(unsigned int /*num_steps*/,
-                               unsigned int /*num_processes*/,
-                               torch::IntArrayRef /*obs_shape*/,
-                               ActionSpace /*action_space*/,
-                               unsigned int /*hidden_state_size*/) {}
+RolloutStorage::RolloutStorage(unsigned int num_steps,
+                               unsigned int num_processes,
+                               torch::IntArrayRef obs_shape,
+                               ActionSpace action_space,
+                               unsigned int hidden_state_size)
+    : num_steps(num_steps), step(0)
+{
+    std::vector<long> observations_shape{num_steps + 1, num_processes};
+    observations_shape.insert(observations_shape.end(), obs_shape.begin(),
+                              obs_shape.end());
+    observations = torch::zeros(observations_shape);
+    hidden_states = torch::zeros({num_steps + 1, num_processes,
+                                  hidden_state_size});
+    rewards = torch::zeros({num_steps, num_processes, 1});
+    value_predictions = torch::zeros({num_steps + 1, num_processes, 1});
+    returns = torch::zeros({num_steps + 1, num_processes, 1});
+    action_log_probs = torch::zeros({num_steps, num_processes, 1});
+    int num_actions;
+    if (action_space.type == "Discrete")
+    {
+        num_actions = 1;
+    }
+    else
+    {
+        num_actions = action_space.shape[0];
+    }
+    actions = torch::zeros({num_steps, num_processes, num_actions});
+    if (action_space.type == "Discrete")
+    {
+        actions = actions.to(torch::kLong);
+    }
+    masks = torch::ones({num_steps + 1, num_processes, 1});
+}
 
 void RolloutStorage::after_update() {}
 
@@ -33,39 +61,39 @@ TEST_CASE("RolloutStorage")
 {
     SUBCASE("RolloutStorage initializes tensors to correct sizes")
     {
-        RolloutStorage storage(3, 4, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
+        RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
 
         CHECK(storage.get_observations().size(0) == 4);
-        CHECK(storage.get_observations().size(1) == 3);
+        CHECK(storage.get_observations().size(1) == 5);
         CHECK(storage.get_observations().size(2) == 5);
         CHECK(storage.get_observations().size(3) == 2);
 
         CHECK(storage.get_hidden_states().size(0) == 4);
-        CHECK(storage.get_hidden_states().size(1) == 3);
+        CHECK(storage.get_hidden_states().size(1) == 5);
         CHECK(storage.get_hidden_states().size(2) == 10);
 
         CHECK(storage.get_rewards().size(0) == 3);
-        CHECK(storage.get_rewards().size(1) == 3);
+        CHECK(storage.get_rewards().size(1) == 5);
         CHECK(storage.get_rewards().size(2) == 1);
 
         CHECK(storage.get_value_predictions().size(0) == 4);
-        CHECK(storage.get_value_predictions().size(1) == 3);
+        CHECK(storage.get_value_predictions().size(1) == 5);
         CHECK(storage.get_value_predictions().size(2) == 1);
 
         CHECK(storage.get_returns().size(0) == 4);
-        CHECK(storage.get_returns().size(1) == 3);
+        CHECK(storage.get_returns().size(1) == 5);
         CHECK(storage.get_returns().size(2) == 1);
 
         CHECK(storage.get_action_log_probs().size(0) == 3);
-        CHECK(storage.get_action_log_probs().size(1) == 3);
+        CHECK(storage.get_action_log_probs().size(1) == 5);
         CHECK(storage.get_action_log_probs().size(2) == 1);
 
         CHECK(storage.get_actions().size(0) == 3);
-        CHECK(storage.get_actions().size(1) == 3);
+        CHECK(storage.get_actions().size(1) == 5);
         CHECK(storage.get_actions().size(2) == 1);
 
         CHECK(storage.get_masks().size(0) == 4);
-        CHECK(storage.get_masks().size(1) == 3);
+        CHECK(storage.get_masks().size(1) == 5);
         CHECK(storage.get_masks().size(2) == 1);
     }
 
