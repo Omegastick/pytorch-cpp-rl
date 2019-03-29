@@ -55,11 +55,21 @@ void RolloutStorage::insert(torch::Tensor /*observation*/,
                             torch::Tensor /*reward*/,
                             torch::Tensor /*mask*/) {}
 
-void RolloutStorage::to(torch::Device) {}
+void RolloutStorage::to(torch::Device device)
+{
+    observations = observations.to(device);
+    hidden_states = hidden_states.to(device);
+    rewards = rewards.to(device);
+    value_predictions = value_predictions.to(device);
+    returns = returns.to(device);
+    action_log_probs = action_log_probs.to(device);
+    actions = actions.to(device);
+    masks = masks.to(device);
+}
 
 TEST_CASE("RolloutStorage")
 {
-    SUBCASE("RolloutStorage initializes tensors to correct sizes")
+    SUBCASE("Initializes tensors to correct sizes")
     {
         RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
 
@@ -95,6 +105,23 @@ TEST_CASE("RolloutStorage")
         CHECK(storage.get_masks().size(0) == 4);
         CHECK(storage.get_masks().size(1) == 5);
         CHECK(storage.get_masks().size(2) == 1);
+    }
+
+    SUBCASE("Initializes actions to correct type")
+    {
+        SUBCASE("Long")
+        {
+            RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
+
+            CHECK(storage.get_actions().dtype() == torch::kLong);
+        }
+
+        SUBCASE("Float")
+        {
+            RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Box", {3}}, 10);
+
+            CHECK(storage.get_actions().dtype() == torch::kFloat);
+        }
     }
 
     SUBCASE("to() doesn't crash")

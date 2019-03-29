@@ -21,7 +21,7 @@ class RolloutStorage
                    ActionSpace action_space,
                    unsigned int hidden_state_size);
 
-    void to(torch::Device);
+    void to(torch::Device device);
     void insert(torch::Tensor observation,
                 torch::Tensor hidden_state,
                 torch::Tensor action,
