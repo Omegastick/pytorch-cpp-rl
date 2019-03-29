@@ -69,11 +69,13 @@ std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
             base_output[2]}; // rnn_hxs
 }
 
-torch::Tensor PolicyImpl::get_values(torch::Tensor /*inputs*/,
-                                     torch::Tensor /*rnn_hxs*/,
-                                     torch::Tensor /*masks*/)
+torch::Tensor PolicyImpl::get_values(torch::Tensor inputs,
+                                     torch::Tensor rnn_hxs,
+                                     torch::Tensor masks)
 {
-    return torch::Tensor();
+    auto base_output = base->forward(inputs, rnn_hxs, masks);
+
+    return base_output[0];
 }
 
 TEST_CASE("Policy")
