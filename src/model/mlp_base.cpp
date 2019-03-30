@@ -10,17 +10,25 @@ MlpBase::MlpBase(unsigned int num_inputs,
                  bool recurrent,
                  unsigned int hidden_size)
     : NNBase(recurrent, num_inputs, hidden_size),
-      actor(
-          nn::Linear(num_inputs, hidden_size),
-          nn::Functional(torch::tanh),
-          nn::Linear(hidden_size, hidden_size),
-          nn::Functional(torch::tanh)),
-      critic(nn::Linear(num_inputs, hidden_size),
-             nn::Functional(torch::tanh),
-             nn::Linear(hidden_size, hidden_size),
-             nn::Functional(torch::tanh)),
-      critic_linear(hidden_size, 1)
+      actor(nullptr),
+      critic(nullptr),
+      critic_linear(nullptr)
 {
+    if (recurrent)
+    {
+        num_inputs = hidden_size;
+    }
+
+    actor = nn::Sequential(nn::Linear(num_inputs, hidden_size),
+                           nn::Functional(torch::tanh),
+                           nn::Linear(hidden_size, hidden_size),
+                           nn::Functional(torch::tanh));
+    critic = nn::Sequential(nn::Linear(num_inputs, hidden_size),
+                            nn::Functional(torch::tanh),
+                            nn::Linear(hidden_size, hidden_size),
+                            nn::Functional(torch::tanh));
+    critic_linear = nn::Linear(hidden_size, 1);
+
     register_module("actor", actor);
     register_module("critic", critic);
     register_module("critic_linear", critic_linear);
@@ -45,39 +53,77 @@ std::vector<torch::Tensor> MlpBase::forward(torch::Tensor inputs,
         rnn_hxs = gru_output[1];
     }
 
-    return {critic_linear->forward(x), x, rnn_hxs};
+    auto hidden_critic = critic->forward(x);
+    auto hidden_actor = actor->forward(x);
+
+    return {critic_linear->forward(hidden_critic), hidden_actor, rnn_hxs};
 }
 
 TEST_CASE("MlpBase")
 {
-    auto base = MlpBase(5, true, 10);
-
-    SUBCASE("Sanity checks")
+    SUBCASE("Recurrent")
     {
-        CHECK(base.is_recurrent() == true);
-        CHECK(base.get_hidden_size() == 10);
+        auto base = MlpBase(5, true, 10);
+
+        SUBCASE("Sanity checks")
+        {
+            CHECK(base.is_recurrent() == true);
+            CHECK(base.get_hidden_size() == 10);
+        }
+
+        SUBCASE("Output tensors are correct shapes")
+        {
+            auto inputs = torch::rand({4, 5});
+            auto rnn_hxs = torch::rand({4, 10});
+            auto masks = torch::zeros({4, 1});
+            auto outputs = base.forward(inputs, rnn_hxs, masks);
+
+            REQUIRE(outputs.size() == 3);
+
+            // Critic
+            CHECK(outputs[0].size(0) == 4);
+            CHECK(outputs[0].size(1) == 1);
+
+            // Actor
+            CHECK(outputs[1].size(0) == 4);
+            CHECK(outputs[1].size(1) == 10);
+
+            // Hidden state
+            CHECK(outputs[2].size(0) == 4);
+            CHECK(outputs[2].size(1) == 10);
+        }
     }
 
-    SUBCASE("Output tensors are correct shapes")
+    SUBCASE("Non-recurrent")
     {
-        auto inputs = torch::rand({4, 5});
-        auto rnn_hxs = torch::rand({4, 10});
-        auto masks = torch::zeros({4, 1});
-        auto outputs = base.forward(inputs, rnn_hxs, masks);
+        auto base = MlpBase(5, false, 10);
 
-        REQUIRE(outputs.size() == 3);
+        SUBCASE("Sanity checks")
+        {
+            CHECK(base.is_recurrent() == false);
+        }
 
-        // Critic
-        CHECK(outputs[0].size(0) == 4);
-        CHECK(outputs[0].size(1) == 1);
+        SUBCASE("Output tensors are correct shapes")
+        {
+            auto inputs = torch::rand({4, 5});
+            auto rnn_hxs = torch::rand({4, 10});
+            auto masks = torch::zeros({4, 1});
+            auto outputs = base.forward(inputs, rnn_hxs, masks);
 
-        // Actor
-        CHECK(outputs[1].size(0) == 4);
-        CHECK(outputs[1].size(1) == 10);
+            REQUIRE(outputs.size() == 3);
 
-        // Hidden state
-        CHECK(outputs[2].size(0) == 4);
-        CHECK(outputs[2].size(1) == 10);
+            // Critic
+            CHECK(outputs[0].size(0) == 4);
+            CHECK(outputs[0].size(1) == 1);
+
+            // Actor
+            CHECK(outputs[1].size(0) == 4);
+            CHECK(outputs[1].size(1) == 10);
+
+            // Hidden state
+            CHECK(outputs[2].size(0) == 4);
+            CHECK(outputs[2].size(1) == 10);
+        }
     }
 }
 }

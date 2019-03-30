@@ -10,6 +10,7 @@ if (CPPRL_BUILD_TESTS)
     )
 endif (CPPRL_BUILD_TESTS)
 
+add_subdirectory(algorithms)
 add_subdirectory(distributions)
 add_subdirectory(model)
 add_subdirectory(third_party)

@@ -34,6 +34,9 @@ class PolicyImpl : public nn::Module
                                                 torch::Tensor rnn_hxs,
                                                 torch::Tensor masks,
                                                 torch::Tensor actions);
+    torch::Tensor get_probs(torch::Tensor inputs,
+                            torch::Tensor rnn_hxs,
+                            torch::Tensor masks);
     torch::Tensor get_values(torch::Tensor inputs,
                              torch::Tensor rnn_hxs,
                              torch::Tensor masks);

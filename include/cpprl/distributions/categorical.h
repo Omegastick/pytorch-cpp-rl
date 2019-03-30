@@ -21,8 +21,10 @@ class Categorical : public Distribution
   public:
     Categorical(const torch::Tensor *probs, const torch::Tensor *logits);
 
-    torch::Tensor sample(torch::IntArrayRef sample_shape = {});
-    torch::Tensor log_prob(torch::Tensor value);
     torch::Tensor entropy();
+    torch::Tensor log_prob(torch::Tensor value);
+    torch::Tensor sample(torch::IntArrayRef sample_shape = {});
+
+    inline torch::Tensor get_probs() { return probs; }
 };
 }

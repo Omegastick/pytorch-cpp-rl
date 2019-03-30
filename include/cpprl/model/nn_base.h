@@ -28,6 +28,7 @@ class NNBase : public nn::Module
                                            torch::Tensor masks);
     unsigned int get_hidden_size() const;
 
+    inline int get_output_size() const { return hidden_size; }
     inline bool is_recurrent() const { return recurrent; }
 };
 }
