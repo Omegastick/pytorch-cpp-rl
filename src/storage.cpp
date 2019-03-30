@@ -47,10 +47,38 @@ void RolloutStorage::after_update()
     masks[0].copy_(masks[-1]);
 }
 
-void RolloutStorage::compute_returns(torch::Tensor /*next_value*/,
-                                     bool /*use_gae*/,
-                                     double /*gamma*/,
-                                     double /*tau*/) {}
+void RolloutStorage::compute_returns(torch::Tensor next_value,
+                                     bool use_gae,
+                                     float gamma,
+                                     float tau)
+{
+    if (use_gae)
+    {
+        value_predictions[-1] = next_value;
+        torch::Tensor gae = torch::zeros({rewards.size(1), 1});
+        for (int step = rewards.size(0) - 1; step >= 0; --step)
+        {
+            auto delta = (rewards[step] +
+                          gamma *
+                              value_predictions[step + 1] *
+                              masks[step + 1] -
+                          value_predictions[step]);
+            gae = delta + gamma * tau * masks[step + 1] * gae;
+            returns[step] = gae + value_predictions[step];
+        }
+    }
+    else
+    {
+        returns[-1] = next_value;
+        for (int step = rewards.size(0) - 1; step >= 0; --step)
+        {
+            returns[step] = (returns[step + 1] *
+                                 gamma *
+                                 masks[step + 1] +
+                             rewards[step]);
+        }
+    }
+}
 
 void RolloutStorage::insert(torch::Tensor observation,
                             torch::Tensor hidden_state,
@@ -191,14 +219,14 @@ TEST_CASE("RolloutStorage")
 
         std::vector<float> value_preds{0, 1};
         std::vector<float> rewards{0, 1};
-        std::vector<int> masks{1, 1};
+        std::vector<float> masks{1, 1};
         storage.insert(torch::zeros({2, 4}),
                        torch::zeros({2, 5}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
-                       torch::from_blob(&value_preds[0], {2, 1}),
-                       torch::from_blob(&rewards[0], {2, 1}),
-                       torch::from_blob(&masks[0], {2, 1}));
+                       torch::from_blob(value_preds.data(), {2, 1}),
+                       torch::from_blob(rewards.data(), {2, 1}),
+                       torch::from_blob(masks.data(), {2, 1}));
         value_preds = {1, 2};
         rewards = {1, 2};
         masks = {1, 0};
@@ -206,9 +234,9 @@ TEST_CASE("RolloutStorage")
                        torch::zeros({2, 5}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
-                       torch::from_blob(&value_preds[0], {2, 1}),
-                       torch::from_blob(&rewards[0], {2, 1}),
-                       torch::from_blob(&masks[0], {2, 1}));
+                       torch::from_blob(value_preds.data(), {2, 1}),
+                       torch::from_blob(rewards.data(), {2, 1}),
+                       torch::from_blob(masks.data(), {2, 1}));
         value_preds = {2, 3};
         rewards = {2, 3};
         masks = {1, 1};
@@ -216,9 +244,9 @@ TEST_CASE("RolloutStorage")
                        torch::zeros({2, 5}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
-                       torch::from_blob(&value_preds[0], {2, 1}),
-                       torch::from_blob(&rewards[0], {2, 1}),
-                       torch::from_blob(&masks[0], {2, 1}));
+                       torch::from_blob(value_preds.data(), {2, 1}),
+                       torch::from_blob(rewards.data(), {2, 1}),
+                       torch::from_blob(masks.data(), {2, 1}));
 
         SUBCASE("Gives correct results without GAE")
         {
@@ -226,6 +254,12 @@ TEST_CASE("RolloutStorage")
             storage.compute_returns(torch::from_blob(&next_values[0], {2, 1}),
                                     false, 0.6, 0.6);
 
+            INFO("Masks: \n"
+                 << storage.get_masks() << "\n");
+            INFO("Rewards: \n"
+                 << storage.get_rewards() << "\n");
+            INFO("Returns: \n"
+                 << storage.get_returns() << "\n");
             CHECK(storage.get_returns()[0][0].item().toDouble() ==
                   doctest::Approx(1.32));
             CHECK(storage.get_returns()[0][1].item().toDouble() ==
@@ -250,6 +284,14 @@ TEST_CASE("RolloutStorage")
             storage.compute_returns(torch::from_blob(&next_values[0], {2, 1}),
                                     true, 0.6, 0.6);
 
+            INFO("Masks: \n"
+                 << storage.get_masks() << "\n");
+            INFO("Rewards: \n"
+                 << storage.get_rewards() << "\n");
+            INFO("Value predictions: \n"
+                 << storage.get_value_predictions() << "\n");
+            INFO("Returns: \n"
+                 << storage.get_returns() << "\n");
             CHECK(storage.get_returns()[0][0].item().toDouble() ==
                   doctest::Approx(1.032));
             CHECK(storage.get_returns()[0][1].item().toDouble() ==
@@ -265,7 +307,7 @@ TEST_CASE("RolloutStorage")
             CHECK(storage.get_returns()[3][0].item().toDouble() ==
                   doctest::Approx(0));
             CHECK(storage.get_returns()[3][1].item().toDouble() ==
-                  doctest::Approx(1));
+                  doctest::Approx(0));
         }
     }
 
@@ -276,34 +318,34 @@ TEST_CASE("RolloutStorage")
 
         std::vector<float> obs{0, 1, 2, 1, 2, 3};
         std::vector<float> hidden_states{0, 1, 0, 1};
-        std::vector<int> masks{0, 1};
-        storage.insert(torch::from_blob(&obs[0], {2, 3}),
-                       torch::from_blob(&hidden_states[0], {2, 2}),
+        std::vector<float> masks{0, 1};
+        storage.insert(torch::from_blob(obs.data(), {2, 3}),
+                       torch::from_blob(hidden_states.data(), {2, 2}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
-                       torch::from_blob(&masks[0], {2, 1}));
+                       torch::from_blob(masks.data(), {2, 1}));
         obs = {0, 1, 2, 1, 2, 3};
         hidden_states = {0, 1, 0, 1};
         masks = {0, 1};
-        storage.insert(torch::from_blob(&obs[0], {2, 3}),
-                       torch::from_blob(&hidden_states[0], {2, 2}),
+        storage.insert(torch::from_blob(obs.data(), {2, 3}),
+                       torch::from_blob(hidden_states.data(), {2, 2}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
-                       torch::from_blob(&masks[0], {2, 1}));
+                       torch::from_blob(masks.data(), {2, 1}));
         obs = {5, 6, 7, 7, 8, 9};
         hidden_states = {1, 2, 3, 4};
         masks = {0, 0};
-        storage.insert(torch::from_blob(&obs[0], {2, 3}),
-                       torch::from_blob(&hidden_states[0], {2, 2}),
+        storage.insert(torch::from_blob(obs.data(), {2, 3}),
+                       torch::from_blob(hidden_states.data(), {2, 2}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
                        torch::zeros({2, 1}),
-                       torch::from_blob(&masks[0], {2, 1}));
+                       torch::from_blob(masks.data(), {2, 1}));
         storage.after_update();
 
         INFO("Observations: \n"

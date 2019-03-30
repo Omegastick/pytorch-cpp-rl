@@ -32,8 +32,8 @@ class RolloutStorage
     void after_update();
     void compute_returns(torch::Tensor next_value,
                          bool use_gae,
-                         double gamma,
-                         double tau);
+                         float gamma,
+                         float tau);
 
     inline const torch::Tensor &get_actions() const { return actions; }
     inline const torch::Tensor &get_action_log_probs() const { return action_log_probs; }
