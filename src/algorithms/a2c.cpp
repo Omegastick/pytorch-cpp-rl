@@ -3,6 +3,7 @@
 #include <torch/torch.h>
 
 #include "cpprl/algorithms/a2c.h"
+#include "cpprl/algorithms/algorithm.h"
 #include "cpprl/model/mlp_base.h"
 #include "cpprl/model/policy.h"
 #include "cpprl/storage.h"
@@ -11,13 +12,22 @@
 
 namespace cpprl
 {
-A2C::A2C(Policy & /*policy*/,
-         float /*value_loss_coef*/,
-         float /*entropy_coef*/,
-         float /*learning_rate*/,
-         float /*epsilon*/,
-         float /*alpha*/,
-         float /*max_grad_norm*/) {}
+A2C::A2C(Policy &policy,
+         float value_loss_coef,
+         float entropy_coef,
+         float learning_rate,
+         float epsilon,
+         float alpha,
+         float max_grad_norm)
+    : policy(&policy),
+      value_loss_coef(value_loss_coef),
+      entropy_coef(entropy_coef),
+      max_grad_norm(max_grad_norm),
+      optimizer(std::make_unique<torch::optim::RMSprop>(
+          policy->parameters(),
+          torch::optim::RMSpropOptions(learning_rate)
+              .eps(epsilon)
+              .alpha(alpha))) {}
 
 std::vector<UpdateDatum> A2C::update(RolloutStorage & /*rollouts*/)
 {
