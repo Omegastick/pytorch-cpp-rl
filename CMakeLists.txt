@@ -19,6 +19,7 @@ add_subdirectory(lib/spdlog)
 
 # Define targets
 add_library(cpprl STATIC "")
+target_compile_definitions(cpprl PRIVATE DOCTEST_CONFIG_DISABLE)
 option(CPPRL_BUILD_TESTS "Whether or not to build the CppRl tests" ON)
 if (CPPRL_BUILD_TESTS)
     add_executable(cpprl_tests "")
