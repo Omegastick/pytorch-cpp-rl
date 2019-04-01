@@ -17,11 +17,12 @@ CategoricalOutput::CategoricalOutput(unsigned int num_inputs,
     : linear(num_inputs, num_outputs)
 {
     register_module("linear", linear);
-    init_weights(linear->named_parameters(), 0.01);
+    init_weights(linear->named_parameters(), 0.01, 0);
 }
 
 std::unique_ptr<Distribution> CategoricalOutput::forward(torch::Tensor x)
 {
+    auto y = x;
     x = linear(x);
     return std::make_unique<Categorical>(nullptr, &x);
 }

@@ -33,9 +33,9 @@ MlpBase::MlpBase(unsigned int num_inputs,
     register_module("critic", critic);
     register_module("critic_linear", critic_linear);
 
-    init_weights(actor->named_parameters(), sqrt(2.));
-    init_weights(critic->named_parameters(), sqrt(2.));
-    init_weights(critic_linear->named_parameters(), sqrt(2.));
+    init_weights(actor->named_parameters(), sqrt(2.), 0);
+    init_weights(critic->named_parameters(), sqrt(2.), 0);
+    init_weights(critic_linear->named_parameters(), sqrt(2.), 0);
 
     train();
 }

@@ -12,17 +12,22 @@ torch::Tensor FlattenImpl::forward(torch::Tensor x)
     return x.view({x.size(0), -1});
 }
 
-void init_weights(torch::OrderedDict<std::string, torch::Tensor> parameters, double gain)
+void init_weights(torch::OrderedDict<std::string, torch::Tensor> parameters,
+                  double weight_gain,
+                  double bias_gain)
 {
     for (const auto &parameter : parameters)
     {
-        if (parameter.key().find("bias") != std::string::npos)
+        if (parameter.value().size(0) != 0)
         {
-            nn::init::constant_(parameter.value(), gain);
-        }
-        else if (parameter.key().find("weight") != std::string::npos)
-        {
-            nn::init::orthogonal_(parameter.value());
+            if (parameter.key().find("bias") != std::string::npos)
+            {
+                nn::init::constant_(parameter.value(), bias_gain);
+            }
+            else if (parameter.key().find("weight") != std::string::npos)
+            {
+                nn::init::orthogonal_(parameter.value(), weight_gain);
+            }
         }
     }
 }
@@ -66,7 +71,7 @@ TEST_CASE("init_weights()")
         nn::Functional(torch::relu),
         nn::Linear(10, 8));
 
-    init_weights(module->named_parameters(), 0);
+    init_weights(module->named_parameters(), 1, 0);
 
     SUBCASE("Bias weights are initialized to 0")
     {

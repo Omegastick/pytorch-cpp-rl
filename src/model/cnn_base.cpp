@@ -25,8 +25,8 @@ CnnBase::CnnBase(unsigned int num_inputs,
     register_module("critic_linear", critic_linear);
 
     // Why this is commented out: https://github.com/pytorch/pytorch/issues/18518
-    // init_weights(main->named_parameters(), sqrt(2.));
-    init_weights(critic_linear->named_parameters(), 1);
+    // init_weights(main->named_parameters(), sqrt(2.), 0);
+    init_weights(critic_linear->named_parameters(), 1, 0);
 
     train();
 }

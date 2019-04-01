@@ -15,5 +15,6 @@ struct FlattenImpl : nn::Module
 TORCH_MODULE(Flatten);
 
 void init_weights(torch::OrderedDict<std::string, torch::Tensor> parameters,
-                  double gain);
+                  double weight_gain,
+                  double bias_gain);
 }

@@ -19,7 +19,7 @@ NNBase::NNBase(bool recurrent,
         gru = nn::GRU(nn::GRUOptions(recurrent_input_size, hidden_size));
         register_module("gru", gru);
         // Init weights
-        init_weights(gru->named_parameters(), 0);
+        init_weights(gru->named_parameters(), 1, 0);
     }
 }
 

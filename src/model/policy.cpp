@@ -13,12 +13,15 @@ namespace cpprl
 PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
     : base(base)
 {
+    register_module("base", base);
+
     int num_outputs;
     if (action_space.type == "Discrete")
     {
         num_outputs = action_space.shape[0];
         output_layer = std::make_shared<CategoricalOutput>(
             base->get_output_size(), num_outputs);
+        register_module("output", output_layer);
     }
     else if (action_space.type == "Box")
     {
@@ -74,7 +77,6 @@ torch::Tensor PolicyImpl::get_probs(torch::Tensor inputs,
                                     torch::Tensor masks)
 {
     auto base_output = base->forward(inputs, rnn_hxs, masks);
-    std::cout << base->parameters() << std::endl;
     auto dist = output_layer->forward(base_output[1]);
 
     return dist->get_probs();
