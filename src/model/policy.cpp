@@ -63,7 +63,9 @@ std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
     auto base_output = base->forward(inputs, rnn_hxs, masks);
     auto dist = output_layer->forward(base_output[1]);
 
-    auto action_log_probs = dist->log_prob(actions.squeeze(-1));
+    auto action_log_probs = dist->log_prob(actions.squeeze(-1))
+                                .view({actions.size(0), -1})
+                                .sum(-1);
     auto entropy = dist->entropy().mean();
 
     return {base_output[0], // value

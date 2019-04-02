@@ -22,7 +22,7 @@ Categorical::Categorical(const torch::Tensor *probs,
         this->probs = *probs / probs->sum(-1, true);
         // 1.21e-7 is used as the epsilon to match PyTorch Python results as closely
         // as possible
-        this->probs = probs->clamp(1.21e-7, 1. - 1.21e-7);
+        this->probs = this->probs.clamp(1.21e-7, 1. - 1.21e-7);
         this->logits = torch::log(this->probs);
     }
     else

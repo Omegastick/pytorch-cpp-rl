@@ -1,3 +1,5 @@
+#include <fstream>
+
 #include <spdlog/spdlog.h>
 
 #include <cpprl/spaces.h>
@@ -11,6 +13,11 @@
 
 using namespace gym_client;
 using namespace cpprl;
+
+const int reward_average_window_size = 1000;
+const int num_envs = 1;
+const int batch_size = 5;
+const float value_loss_coef = 0.5;
 
 template <typename T>
 std::vector<T> flatten_2d_vector(std::vector<std::vector<T>> const &input)
@@ -31,6 +38,9 @@ int main(int argc, char *argv[])
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern("%^[%T %7l] %v%$");
 
+    torch::set_num_threads(1);
+    torch::manual_seed(0);
+
     spdlog::info("Connecting to gym server");
     Communicator communicator("tcp://127.0.0.1:10201");
 
@@ -38,7 +48,7 @@ int main(int argc, char *argv[])
     auto make_param = std::make_shared<MakeParam>();
     make_param->env_name = "CartPole-v1";
     make_param->env_type = "classic_control";
-    make_param->num_envs = 4;
+    make_param->num_envs = num_envs;
     Request<MakeParam> make_request("make", make_param);
     communicator.send_request(make_request);
     spdlog::info(communicator.get_response<MakeResponse>()->result);
@@ -48,18 +58,22 @@ int main(int argc, char *argv[])
     Request<ResetParam> reset_request("reset", reset_param);
     communicator.send_request(reset_request);
     auto observation_vec = flatten_2d_vector<float>(communicator.get_response<ResetResponse>()->observation);
-    auto observation = torch::from_blob(observation_vec.data(), {4, 4});
+    auto observation = torch::from_blob(observation_vec.data(), {num_envs, 4});
 
-    auto base = std::make_shared<MlpBase>(4, false, 5);
+    auto base = std::make_shared<MlpBase>(4, false, 64);
     ActionSpace space{"Discrete", {2}};
     Policy policy(space, base);
-    RolloutStorage storage(100, 4, {4}, space, 5);
-    A2C a2c(policy, 0.5, 1e-3, 0.0001);
+    RolloutStorage storage(batch_size, num_envs, {4}, space, 64);
+    A2C a2c(policy, value_loss_coef, 1e-5, 0.001);
 
-    for (int i = 0; i < 1000; ++i)
+    std::vector<float> running_rewards(num_envs);
+    int episode_count = 0;
+    std::vector<float> reward_history(reward_average_window_size);
+
+    for (int i = 0; i < 1; ++i)
     {
 
-        for (int step = 0; step < 100; ++step)
+        for (int step = 0; step < batch_size; ++step)
         {
             std::vector<torch::Tensor> act_result;
             {
@@ -69,9 +83,8 @@ int main(int argc, char *argv[])
                                          torch::ones({2, 1}));
             }
             long *actions_array = act_result[1].data<long>();
-            std::vector<std::vector<int>> actions;
-            actions.resize(4);
-            for (int i = 0; i < 4; ++i)
+            std::vector<std::vector<int>> actions(num_envs);
+            for (int i = 0; i < num_envs; ++i)
             {
                 actions[i] = {static_cast<int>(actions_array[i])};
             }
@@ -83,19 +96,29 @@ int main(int argc, char *argv[])
             communicator.send_request(step_request);
             auto step_result = communicator.get_response<StepResponse>();
             auto rewards = flatten_2d_vector<float>(step_result->reward);
-            auto dones = torch::zeros({4, 1});
-            for (int i = 0; i < 4; ++i)
+            for (int i = 0; i < num_envs; ++i)
             {
-                dones[i][0] = 1 - static_cast<int>(step_result->done[i][0]);
+                running_rewards[i] += rewards[i];
+                if (step_result->done[i][0])
+                {
+                    reward_history[episode_count % reward_average_window_size] = running_rewards[i];
+                    running_rewards[i] = 0;
+                    episode_count++;
+                }
+            }
+            auto dones = torch::zeros({num_envs, 1});
+            for (int i = 0; i < num_envs; ++i)
+            {
+                dones[i][0] = static_cast<int>(step_result->done[i][0]);
             }
 
             storage.insert(observation,
-                           torch::zeros({4, 5}),
+                           torch::zeros({num_envs, 64}),
                            act_result[1],
                            act_result[2],
                            act_result[0],
-                           torch::from_blob(rewards.data(), {4, 1}),
-                           dones);
+                           torch::from_blob(rewards.data(), {num_envs, 1}),
+                           1 - dones);
         }
 
         torch::Tensor next_value;
@@ -107,9 +130,17 @@ int main(int argc, char *argv[])
                                    storage.get_masks()[-1])
                              .detach();
         }
-        storage.compute_returns(next_value, false, 0., 0.9);
+        storage.compute_returns(next_value, false, 0.99, 0.9);
 
-        a2c.update(storage);
+        auto update_data = a2c.update(storage);
         storage.after_update();
+
+        for (const auto &datum : update_data)
+        {
+            spdlog::info("{}: {}", datum.name, datum.value);
+        }
+        float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
+        average_reward /= episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
+        spdlog::info("Reward: {}", average_reward);
     }
 }
