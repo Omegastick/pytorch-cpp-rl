@@ -1,3 +1,4 @@
+#include <string.h>
 #include <fstream>
 
 #include <spdlog/spdlog.h>
@@ -20,6 +21,7 @@ const int num_envs = 1;
 const int batch_size = 5;
 const float value_loss_coef = 0.5;
 const float discount_factor = 0.99;
+const int hidden_size = 5;
 
 template <typename T>
 std::vector<T> flatten_2d_vector(std::vector<std::vector<T>> const &input)
@@ -62,10 +64,10 @@ int main(int argc, char *argv[])
     auto observation_vec = flatten_2d_vector<float>(communicator.get_response<ResetResponse>()->observation);
     auto observation = torch::from_blob(observation_vec.data(), {num_envs, 4});
 
-    auto base = std::make_shared<MlpBase>(4, false, 64);
+    auto base = std::make_shared<MlpBase>(4, false, hidden_size);
     ActionSpace space{"Discrete", {2}};
     Policy policy(space, base);
-    RolloutStorage storage(batch_size, num_envs, {4}, space, 64);
+    RolloutStorage storage(batch_size, num_envs, {4}, space, hidden_size);
     A2C a2c(policy, value_loss_coef, 1e-5, 0.001);
 
     storage.set_first_observation(observation);
@@ -88,11 +90,12 @@ int main(int argc, char *argv[])
                 parameter_vec = parameter.value()[1].get<std::vector<float>>();
             }
             auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size);
-            *base->named_parameters()[parameter.key()].data<float>() = *json_weights.data<float>();
+            int element_count = json_weights.numel();
+            memcpy(base->named_parameters()[parameter.key()].data<float>(), json_weights.data<float>(), element_count);
             spdlog::info("Wrote {}", parameter.key());
             if (parameter.key().find("bias") == std::string::npos)
             {
-                spdlog::info("Json: {} - Memory: {}", parameter.value()[1][0][0], base->named_parameters()[parameter.key()][0][0].item().toFloat());
+                spdlog::info("Json: {} - Memory: {}", parameter.value()[1][0][1], base->named_parameters()[parameter.key()][0][1].item().toFloat());
             }
         }
         else if (policy->named_modules()["output"]->named_parameters().contains(parameter.key()))
@@ -109,13 +112,14 @@ int main(int argc, char *argv[])
                 parameter_vec = parameter.value()[1].get<std::vector<float>>();
             }
             auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size);
-            *policy->named_modules()["output"]->named_parameters()[parameter.key()].data<float>() = *json_weights.data<float>();
+            int element_count = json_weights.numel();
+            memcpy(policy->named_modules()["output"]->named_parameters()[parameter.key()].data<float>(), json_weights.data<float>(), element_count);
             spdlog::info("Wrote {}", parameter.key());
             if (parameter.key().find("bias") == std::string::npos)
             {
                 spdlog::info("Json: {} - Memory: {}",
-                             parameter.value()[1][0][0],
-                             policy->named_modules()["output"]->named_parameters()[parameter.key()][0][0].item().toFloat());
+                             parameter.value()[1][0][1],
+                             policy->named_modules()["output"]->named_parameters()[parameter.key()][0][1].item().toFloat());
             }
         }
     }
@@ -169,7 +173,7 @@ int main(int argc, char *argv[])
             }
 
             storage.insert(observation,
-                           torch::zeros({num_envs, 64}),
+                           torch::zeros({num_envs, hidden_size}),
                            act_result[1],
                            act_result[2],
                            act_result[0],
