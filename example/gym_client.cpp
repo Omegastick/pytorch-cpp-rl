@@ -1,6 +1,7 @@
 #include <fstream>
 
 #include <spdlog/spdlog.h>
+#include <nlohmann/json.hpp>
 
 #include <cpprl/spaces.h>
 #include <cpprl/storage.h>
@@ -66,13 +67,63 @@ int main(int argc, char *argv[])
     RolloutStorage storage(batch_size, num_envs, {4}, space, 64);
     A2C a2c(policy, value_loss_coef, 1e-5, 0.001);
 
+    std::ifstream weights_file{"/home/px046/prog/pytorch-cpp-rl/build/weights.json"};
+    auto json = nlohmann::json::parse(weights_file);
+    for (const auto &parameter : json.items())
+    {
+        if (base->named_parameters().contains(parameter.key()))
+        {
+            std::vector<int64_t> tensor_size = parameter.value()[0];
+            std::vector<float> parameter_vec;
+            if (parameter.key().find("bias") == std::string::npos)
+            {
+                std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
+                parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
+            }
+            else
+            {
+                parameter_vec = parameter.value()[1].get<std::vector<float>>();
+            }
+            auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size);
+            *base->named_parameters()[parameter.key()].data<float>() = *json_weights.data<float>();
+            spdlog::info("Wrote {}", parameter.key());
+            if (parameter.key().find("bias") == std::string::npos)
+            {
+                spdlog::info("Json: {} - Memory: {}", parameter.value()[1][0][0], base->named_parameters()[parameter.key()][0][0].item().toFloat());
+            }
+        }
+        else if (policy->named_modules()["output"]->named_parameters().contains(parameter.key()))
+        {
+            std::vector<int64_t> tensor_size = parameter.value()[0];
+            std::vector<float> parameter_vec;
+            if (parameter.key().find("bias") == std::string::npos)
+            {
+                std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
+                parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
+            }
+            else
+            {
+                parameter_vec = parameter.value()[1].get<std::vector<float>>();
+            }
+            auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size);
+            *policy->named_modules()["output"]->named_parameters()[parameter.key()].data<float>() = *json_weights.data<float>();
+            spdlog::info("Wrote {}", parameter.key());
+            if (parameter.key().find("bias") == std::string::npos)
+            {
+                spdlog::info("Json: {} - Memory: {}",
+                             parameter.value()[1][0][0],
+                             policy->named_modules()["output"]->named_parameters()[parameter.key()][0][0].item().toFloat());
+            }
+        }
+    }
+
     std::vector<float> running_rewards(num_envs);
     int episode_count = 0;
     std::vector<float> reward_history(reward_average_window_size);
 
+    torch::manual_seed(0);
     for (int i = 0; i < 1; ++i)
     {
-
         for (int step = 0; step < batch_size; ++step)
         {
             std::vector<torch::Tensor> act_result;

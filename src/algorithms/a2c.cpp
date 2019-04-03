@@ -32,6 +32,7 @@ A2C::A2C(Policy &policy,
 
 std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts)
 {
+    std::cout << rollouts.get_observations() << std::endl;
     auto full_obs_shape = rollouts.get_observations().sizes();
     std::vector<int64_t> obs_shape(full_obs_shape.begin() + 2,
                                    full_obs_shape.end());
@@ -52,18 +53,13 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts)
         {num_steps, num_processes, 1});
 
     auto advantages = rollouts.get_returns().slice(0, 0, -1) - values;
-    std::cout << rollouts.get_returns();
-    std::cout << advantages << std::endl;
     auto value_loss = advantages.pow(2).mean();
-    std::cout << value_loss << std::endl;
 
     auto action_loss = -(advantages.detach() * action_log_probs).mean();
 
-    // auto loss = (value_loss * value_loss_coef +
-    //              action_loss -
-    //              evaluate_result[2] * entropy_coef);
     auto loss = (value_loss * value_loss_coef +
-                 action_loss);
+                 action_loss -
+                 evaluate_result[2] * entropy_coef);
     optimizer->zero_grad();
     loss.backward();
 
