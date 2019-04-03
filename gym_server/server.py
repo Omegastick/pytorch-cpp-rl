@@ -4,11 +4,11 @@ Contains a class that trains an agent.
 import logging
 from typing import Tuple
 import numpy as np
-from baselines.common.cmd_util import make_vec_env
 from gym.spaces.discrete import Discrete
 
-from gym_server.zmq_client import ZmqClient
+from gym_server.envs import make_vec_envs
 from gym_server.messages import MakeMessage, ResetMessage, StepMessage
+from gym_server.zmq_client import ZmqClient
 
 
 RUNNING_REWARD_HORIZON = 10
@@ -42,8 +42,8 @@ class Server:
             param = request["param"]
 
             if method == "make":
-                self.__make(param["env_name"], param["env_type"],
-                            param["num_envs"])
+                self.__make(param["env_name"], param["num_envs"],
+                            param["gamma"])
                 self.zmq_client.send(MakeMessage())
 
             elif method == "reset":
@@ -59,13 +59,12 @@ class Server:
                 self.zmq_client.send(StepMessage(result[0], result[1],
                                                  result[2]))
 
-    def make(self, env_name, env_type, num_envs):
+    def make(self, env_name, num_envs, gamma):
         """
         Makes a vectorized environment of the type and number specified.
         """
-        logging.info("Making %d %ss, which are of type %s",
-                     num_envs, env_name, env_type)
-        self.env = make_vec_env(env_name, env_type, num_envs, 0)
+        logging.info("Making %d %ss", num_envs, env_name)
+        self.env = make_vec_envs(env_name, 0, num_envs, gamma)
 
     def reset(self) -> np.ndarray:
         """

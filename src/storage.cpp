@@ -99,6 +99,11 @@ void RolloutStorage::insert(torch::Tensor observation,
     step = (step + 1) % num_steps;
 }
 
+void RolloutStorage::set_first_observation(torch::Tensor observation)
+{
+    observations[0].copy_(observation);
+}
+
 void RolloutStorage::to(torch::Device device)
 {
     observations = observations.to(device);

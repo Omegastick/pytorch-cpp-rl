@@ -19,6 +19,7 @@ const int reward_average_window_size = 1000;
 const int num_envs = 1;
 const int batch_size = 5;
 const float value_loss_coef = 0.5;
+const float discount_factor = 0.99;
 
 template <typename T>
 std::vector<T> flatten_2d_vector(std::vector<std::vector<T>> const &input)
@@ -48,7 +49,7 @@ int main(int argc, char *argv[])
     spdlog::info("Creating environment");
     auto make_param = std::make_shared<MakeParam>();
     make_param->env_name = "CartPole-v1";
-    make_param->env_type = "classic_control";
+    make_param->gamma = discount_factor;
     make_param->num_envs = num_envs;
     Request<MakeParam> make_request("make", make_param);
     communicator.send_request(make_request);
@@ -66,6 +67,8 @@ int main(int argc, char *argv[])
     Policy policy(space, base);
     RolloutStorage storage(batch_size, num_envs, {4}, space, 64);
     A2C a2c(policy, value_loss_coef, 1e-5, 0.001);
+
+    storage.set_first_observation(observation);
 
     std::ifstream weights_file{"/home/px046/prog/pytorch-cpp-rl/build/weights.json"};
     auto json = nlohmann::json::parse(weights_file);
@@ -146,6 +149,8 @@ int main(int argc, char *argv[])
             Request<StepParam> step_request("step", step_param);
             communicator.send_request(step_request);
             auto step_result = communicator.get_response<StepResponse>();
+            observation_vec = flatten_2d_vector<float>(step_result->observation);
+            observation = torch::from_blob(observation_vec.data(), {num_envs, 4});
             auto rewards = flatten_2d_vector<float>(step_result->reward);
             for (int i = 0; i < num_envs; ++i)
             {
@@ -181,7 +186,7 @@ int main(int argc, char *argv[])
                                    storage.get_masks()[-1])
                              .detach();
         }
-        storage.compute_returns(next_value, false, 0.99, 0.9);
+        storage.compute_returns(next_value, false, discount_factor, 0.9);
 
         auto update_data = a2c.update(storage);
         storage.after_update();

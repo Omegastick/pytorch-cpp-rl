@@ -19,9 +19,9 @@ struct Request
 struct MakeParam
 {
     std::string env_name;
-    std::string env_type;
+    float gamma;
     int num_envs;
-    MSGPACK_DEFINE_MAP(env_name, env_type, num_envs);
+    MSGPACK_DEFINE_MAP(env_name, gamma, num_envs);
 };
 
 struct ResetParam

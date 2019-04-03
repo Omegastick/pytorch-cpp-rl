@@ -32,7 +32,6 @@ A2C::A2C(Policy &policy,
 
 std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts)
 {
-    std::cout << rollouts.get_observations() << std::endl;
     auto full_obs_shape = rollouts.get_observations().sizes();
     std::vector<int64_t> obs_shape(full_obs_shape.begin() + 2,
                                    full_obs_shape.end());

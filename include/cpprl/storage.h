@@ -21,7 +21,11 @@ class RolloutStorage
                    ActionSpace action_space,
                    unsigned int hidden_state_size);
 
-    void to(torch::Device device);
+    void after_update();
+    void compute_returns(torch::Tensor next_value,
+                         bool use_gae,
+                         float gamma,
+                         float tau);
     void insert(torch::Tensor observation,
                 torch::Tensor hidden_state,
                 torch::Tensor action,
@@ -29,11 +33,8 @@ class RolloutStorage
                 torch::Tensor value_prediction,
                 torch::Tensor reward,
                 torch::Tensor mask);
-    void after_update();
-    void compute_returns(torch::Tensor next_value,
-                         bool use_gae,
-                         float gamma,
-                         float tau);
+    void set_first_observation(torch::Tensor observation);
+    void to(torch::Device device);
 
     inline const torch::Tensor &get_actions() const { return actions; }
     inline const torch::Tensor &get_action_log_probs() const { return action_log_probs; }
