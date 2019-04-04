@@ -71,14 +71,15 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts)
 
 TEST_CASE("A2C")
 {
-    auto base = std::make_shared<MlpBase>(1, false, 5);
-    ActionSpace space{"Discrete", {2}};
-    Policy policy(space, base);
-    RolloutStorage storage(5, 2, {1}, space, 5);
-    A2C a2c(policy, 0.5, 1e-9, 0.001);
-
+    torch::manual_seed(0);
     SUBCASE("update() learns basic pattern")
     {
+        auto base = std::make_shared<MlpBase>(1, false, 5);
+        ActionSpace space{"Discrete", {2}};
+        Policy policy(space, base);
+        RolloutStorage storage(5, 2, {1}, space, 5);
+        A2C a2c(policy, 0.5, 1e-3, 0.001);
+
         // The reward is the action
         auto pre_game_probs = policy->get_probs(
             torch::ones({2, 1}),
@@ -142,18 +143,25 @@ TEST_CASE("A2C")
 
     SUBCASE("update() learns basic game")
     {
+        auto base = std::make_shared<MlpBase>(1, false, 5);
+        ActionSpace space{"Discrete", {2}};
+        Policy policy(space, base);
+        RolloutStorage storage(5, 2, {1}, space, 5);
+        A2C a2c(policy, 0.5, 1e-7, 0.0001);
+
         // The game is: If the action matches the input, give a reward of 1, otherwise -1
         auto pre_game_probs = policy->get_probs(
             torch::ones({2, 1}),
             torch::zeros({2, 5}),
             torch::ones({2, 1}));
 
-        for (int i = 0; i < 1000; ++i)
+        auto observation = torch::randint(0, 2, {2, 1});
+        storage.set_first_observation(observation);
+
+        for (int i = 0; i < 10; ++i)
         {
             for (int j = 0; j < 5; ++j)
             {
-                auto observation = torch::randint(0, 2, {2, 1});
-
                 std::vector<torch::Tensor> act_result;
                 {
                     torch::NoGradGuard no_grad;
@@ -164,6 +172,7 @@ TEST_CASE("A2C")
                 auto actions = act_result[1];
 
                 auto rewards = ((actions == observation.to(torch::kLong)).to(torch::kFloat) * 2) - 1;
+                observation = torch::randint(0, 2, {2, 1});
                 storage.insert(observation,
                                torch::zeros({2, 5}),
                                actions,
@@ -182,7 +191,7 @@ TEST_CASE("A2C")
                                        storage.get_masks()[-1])
                                  .detach();
             }
-            storage.compute_returns(next_value, false, 0., 0.9);
+            storage.compute_returns(next_value, false, 0.1, 0.9);
 
             a2c.update(storage);
             storage.after_update();
