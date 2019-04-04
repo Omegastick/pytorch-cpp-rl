@@ -16,12 +16,23 @@
 using namespace gym_client;
 using namespace cpprl;
 
-const int reward_average_window_size = 100;
-const int num_envs = 8;
+// Algorithm hyperparameters
 const int batch_size = 5;
-const float value_loss_coef = 0.5;
 const float discount_factor = 0.99;
-const int hidden_size = 64;
+const float entropy_coef = 1e-4;
+const float learning_rate = 1e-3;
+const int reward_average_window_size = 100;
+const float value_loss_coef = 0.5;
+
+// Environment hyperparameters
+const std::string env_name = "LunarLander-v2";
+const int num_envs = 8;
+const float env_gamma = -1; // Set to -1 to disable
+
+// Model hyperparameters
+const int actions = 4;
+const int observation_size = 8;
+const int hidden_size = 128;
 
 template <typename T>
 std::vector<T> flatten_2d_vector(std::vector<std::vector<T>> const &input)
@@ -50,8 +61,8 @@ int main(int argc, char *argv[])
 
     spdlog::info("Creating environment");
     auto make_param = std::make_shared<MakeParam>();
-    make_param->env_name = "CartPole-v1";
-    make_param->gamma = discount_factor;
+    make_param->env_name = env_name;
+    make_param->gamma = env_gamma;
     make_param->num_envs = num_envs;
     Request<MakeParam> make_request("make", make_param);
     communicator.send_request(make_request);
@@ -62,13 +73,13 @@ int main(int argc, char *argv[])
     Request<ResetParam> reset_request("reset", reset_param);
     communicator.send_request(reset_request);
     auto observation_vec = flatten_2d_vector<float>(communicator.get_response<ResetResponse>()->observation);
-    auto observation = torch::from_blob(observation_vec.data(), {num_envs, 4});
+    auto observation = torch::from_blob(observation_vec.data(), {num_envs, observation_size});
 
-    auto base = std::make_shared<MlpBase>(4, false, hidden_size);
-    ActionSpace space{"Discrete", {2}};
+    auto base = std::make_shared<MlpBase>(observation_size, false, hidden_size);
+    ActionSpace space{"Discrete", {actions}};
     Policy policy(space, base);
-    RolloutStorage storage(batch_size, num_envs, {4}, space, hidden_size);
-    A2C a2c(policy, value_loss_coef, 1e-4, 0.001);
+    RolloutStorage storage(batch_size, num_envs, {observation_size}, space, hidden_size);
+    A2C a2c(policy, value_loss_coef, entropy_coef, learning_rate);
 
     storage.set_first_observation(observation);
 
@@ -130,7 +141,7 @@ int main(int argc, char *argv[])
     std::vector<float> reward_history(reward_average_window_size);
 
     torch::manual_seed(0);
-    for (int i = 0; i < 100000; ++i)
+    for (int update = 0; update < 100000; ++update)
     {
         for (int step = 0; step < batch_size; ++step)
         {
@@ -139,7 +150,7 @@ int main(int argc, char *argv[])
                 torch::NoGradGuard no_grad;
                 act_result = policy->act(observation,
                                          torch::Tensor(),
-                                         torch::ones({2, 1}));
+                                         torch::ones({num_envs, 1}));
             }
             long *actions_array = act_result[1].data<long>();
             std::vector<std::vector<int>> actions(num_envs);
@@ -155,12 +166,11 @@ int main(int argc, char *argv[])
             communicator.send_request(step_request);
             auto step_result = communicator.get_response<StepResponse>();
             observation_vec = flatten_2d_vector<float>(step_result->observation);
-            observation = torch::from_blob(observation_vec.data(), {num_envs, 4});
+            observation = torch::from_blob(observation_vec.data(), {num_envs, observation_size});
             auto rewards = flatten_2d_vector<float>(step_result->reward);
             for (int i = 0; i < num_envs; ++i)
             {
-                // running_rewards[i] += rewards[i];
-                running_rewards[i]++;
+                running_rewards[i] += rewards[i];
                 if (step_result->done[i][0])
                 {
                     reward_history[episode_count % reward_average_window_size] = running_rewards[i];
@@ -197,12 +207,17 @@ int main(int argc, char *argv[])
         auto update_data = a2c.update(storage);
         storage.after_update();
 
-        for (const auto &datum : update_data)
+        if (update % 10 == 0)
         {
-            spdlog::info("{}: {}", datum.name, datum.value);
+            spdlog::info("---");
+            spdlog::info("Update: {}", update);
+            for (const auto &datum : update_data)
+            {
+                spdlog::info("{}: {}", datum.name, datum.value);
+            }
+            float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
+            average_reward /= episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
+            spdlog::info("Reward: {}", average_reward);
         }
-        float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
-        average_reward /= episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
-        spdlog::info("Reward: {}", average_reward);
     }
 }
