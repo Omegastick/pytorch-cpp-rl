@@ -54,6 +54,7 @@ struct StepResponse
     std::vector<std::vector<float>> observation;
     std::vector<std::vector<float>> reward;
     std::vector<std::vector<bool>> done;
-    MSGPACK_DEFINE_MAP(observation, reward, done);
+    std::vector<std::vector<float>> real_reward;
+    MSGPACK_DEFINE_MAP(observation, reward, done, real_reward);
 };
 }

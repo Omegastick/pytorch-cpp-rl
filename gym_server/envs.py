@@ -40,15 +40,26 @@ class VecNormalize(VecNormalize_):
             obs = np.clip((obs - self.ob_rms.mean)
                           / np.sqrt(self.ob_rms.var + self.epsilon),
                           -self.clipob, self.clipob)
-            return obs
-        else:
-            return obs
+        return obs
 
     def train(self):
         self.training = True
 
     def eval(self):
         self.training = False
+
+    def step_wait(self):
+        obs, rews, news, infos = self.venv.step_wait()
+        infos = {'reward': np.expand_dims(rews, -1)}
+        self.ret = self.ret * self.gamma + rews
+        obs = self._obfilt(obs)
+        if self.ret_rms:
+            self.ret_rms.update(self.ret)
+            rews = np.clip(rews / np.sqrt(self.ret_rms.var + self.epsilon),
+                           -self.cliprew,
+                           self.cliprew)
+        self.ret[news] = 0.
+        return obs, rews, news, infos
 
 
 def make_env(env_id, seed, rank):

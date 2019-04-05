@@ -19,15 +19,15 @@ using namespace cpprl;
 // Algorithm hyperparameters
 const int batch_size = 5;
 const float discount_factor = 0.99;
-const float entropy_coef = 1e-4;
+const float entropy_coef = 1e-3;
 const float learning_rate = 1e-3;
-const int reward_average_window_size = 100;
+const int reward_average_window_size = 10;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
 const std::string env_name = "LunarLander-v2";
 const int num_envs = 8;
-const float env_gamma = -1; // Set to -1 to disable
+const float env_gamma = discount_factor; // Set to -1 to disable
 
 // Model hyperparameters
 const int actions = 4;
@@ -83,64 +83,64 @@ int main(int argc, char *argv[])
 
     storage.set_first_observation(observation);
 
-    std::ifstream weights_file{"/home/px046/prog/pytorch-cpp-rl/build/weights.json"};
-    auto json = nlohmann::json::parse(weights_file);
-    for (const auto &parameter : json.items())
-    {
-        if (base->named_parameters().contains(parameter.key()))
-        {
-            std::vector<int64_t> tensor_size = parameter.value()[0];
-            std::vector<float> parameter_vec;
-            if (parameter.key().find("bias") == std::string::npos)
-            {
-                std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
-                parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
-            }
-            else
-            {
-                parameter_vec = parameter.value()[1].get<std::vector<float>>();
-            }
-            NoGradGuard guard;
-            auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size).contiguous();
-            base->named_parameters()[parameter.key()].copy_(json_weights);
-            spdlog::info("Wrote {}", parameter.key());
-            if (parameter.key().find("bias") == std::string::npos)
-            {
-                spdlog::info("Json: {} - Memory: {}", parameter.value()[1][0][0], base->named_parameters()[parameter.key()][0][0].item().toFloat());
-            }
-        }
-        else if (policy->named_modules()["output"]->named_parameters().contains(parameter.key()))
-        {
-            std::vector<int64_t> tensor_size = parameter.value()[0];
-            std::vector<float> parameter_vec;
-            if (parameter.key().find("bias") == std::string::npos)
-            {
-                std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
-                parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
-            }
-            else
-            {
-                parameter_vec = parameter.value()[1].get<std::vector<float>>();
-            }
-            NoGradGuard guard;
-            auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size).contiguous();
-            policy->named_modules()["output"]->named_parameters()[parameter.key()].copy_(json_weights);
-            spdlog::info("Wrote {}", parameter.key());
-            if (parameter.key().find("bias") == std::string::npos)
-            {
-                spdlog::info("Json: {} - Memory: {}",
-                             parameter.value()[1][0][0],
-                             policy->named_modules()["output"]->named_parameters()[parameter.key()][0][0].item().toFloat());
-            }
-        }
-    }
+    // std::ifstream weights_file{"/home/px046/prog/pytorch-cpp-rl/build/weights.json"};
+    // auto json = nlohmann::json::parse(weights_file);
+    // for (const auto &parameter : json.items())
+    // {
+    //     if (base->named_parameters().contains(parameter.key()))
+    //     {
+    //         std::vector<int64_t> tensor_size = parameter.value()[0];
+    //         std::vector<float> parameter_vec;
+    //         if (parameter.key().find("bias") == std::string::npos)
+    //         {
+    //             std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
+    //             parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
+    //         }
+    //         else
+    //         {
+    //             parameter_vec = parameter.value()[1].get<std::vector<float>>();
+    //         }
+    //         NoGradGuard guard;
+    //         auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size).contiguous();
+    //         base->named_parameters()[parameter.key()].copy_(json_weights);
+    //         spdlog::info("Wrote {}", parameter.key());
+    //         if (parameter.key().find("bias") == std::string::npos)
+    //         {
+    //             spdlog::info("Json: {} - Memory: {}", parameter.value()[1][0][0], base->named_parameters()[parameter.key()][0][0].item().toFloat());
+    //         }
+    //     }
+    //     else if (policy->named_modules()["output"]->named_parameters().contains(parameter.key()))
+    //     {
+    //         std::vector<int64_t> tensor_size = parameter.value()[0];
+    //         std::vector<float> parameter_vec;
+    //         if (parameter.key().find("bias") == std::string::npos)
+    //         {
+    //             std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
+    //             parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
+    //         }
+    //         else
+    //         {
+    //             parameter_vec = parameter.value()[1].get<std::vector<float>>();
+    //         }
+    //         NoGradGuard guard;
+    //         auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size).contiguous();
+    //         policy->named_modules()["output"]->named_parameters()[parameter.key()].copy_(json_weights);
+    //         spdlog::info("Wrote {}", parameter.key());
+    //         if (parameter.key().find("bias") == std::string::npos)
+    //         {
+    //             spdlog::info("Json: {} - Memory: {}",
+    //                          parameter.value()[1][0][0],
+    //                          policy->named_modules()["output"]->named_parameters()[parameter.key()][0][0].item().toFloat());
+    //         }
+    //     }
+    // }
 
     std::vector<float> running_rewards(num_envs);
     int episode_count = 0;
     std::vector<float> reward_history(reward_average_window_size);
 
     torch::manual_seed(0);
-    for (int update = 0; update < 1; ++update)
+    for (int update = 0; update < 100000; ++update)
     {
         for (int step = 0; step < batch_size; ++step)
         {
@@ -167,9 +167,10 @@ int main(int argc, char *argv[])
             observation_vec = flatten_2d_vector<float>(step_result->observation);
             observation = torch::from_blob(observation_vec.data(), {num_envs, observation_size});
             auto rewards = flatten_2d_vector<float>(step_result->reward);
+            auto real_rewards = flatten_2d_vector<float>(step_result->real_reward);
             for (int i = 0; i < num_envs; ++i)
             {
-                running_rewards[i] += rewards[i];
+                running_rewards[i] += real_rewards[i];
                 if (step_result->done[i][0])
                 {
                     reward_history[episode_count % reward_average_window_size] = running_rewards[i];

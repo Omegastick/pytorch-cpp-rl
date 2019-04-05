@@ -38,26 +38,28 @@ class Server:
     def _serve(self):
         while True:
             request = self.zmq_client.receive()
-            method = request["method"]
-            param = request["param"]
+            method = request['method']
+            param = request['param']
 
-            if method == "make":
-                self.__make(param["env_name"], param["num_envs"],
-                            param["gamma"])
+            if method == 'make':
+                self.__make(param['env_name'], param['num_envs'],
+                            param['gamma'])
                 self.zmq_client.send(MakeMessage())
 
-            elif method == "reset":
+            elif method == 'reset':
                 observation = self.__reset()
                 self.zmq_client.send(ResetMessage(observation))
 
-            elif method == "step":
-                if "render" in param:
+            elif method == 'step':
+                if 'render' in param:
                     result = self.__step(
-                        np.array(param["actions"]), param["render"])
+                        np.array(param['actions']), param['render'])
                 else:
-                    result = self.__step(np.array(param["actions"]))
-                self.zmq_client.send(StepMessage(result[0], result[1],
-                                                 result[2]))
+                    result = self.__step(np.array(param['actions']))
+                self.zmq_client.send(StepMessage(result[0],
+                                                 result[1],
+                                                 result[2],
+                                                 result[3]['reward']))
 
     def make(self, env_name, num_envs, gamma):
         """

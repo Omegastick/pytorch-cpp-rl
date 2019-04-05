@@ -53,15 +53,18 @@ class StepMessage(Message):
     def __init__(self,
                  observation: np.ndarray,
                  reward: np.ndarray,
-                 done: np.ndarray):
+                 done: np.ndarray,
+                 real_reward: np.ndarray):
         self.observation = observation
         self.reward = reward
         self.done = done
+        self.real_reward = real_reward
 
     def to_msg(self) -> bytes:
         request = {
             "observation": self.observation.tolist(),
             "reward": self.reward.tolist(),
-            "done": self.done.tolist()
+            "done": self.done.tolist(),
+            "real_reward": self.real_reward.tolist()
         }
         return msgpack.packb(request)

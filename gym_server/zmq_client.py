@@ -1,11 +1,8 @@
 """
 Pytorch-cpp-rl OpenAI gym server ZMQ client.
 """
-import logging
 import zmq
 import msgpack
-
-from gym_server.messages import Message
 
 
 class ZmqClient:
