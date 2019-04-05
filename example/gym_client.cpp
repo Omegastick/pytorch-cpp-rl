@@ -1,4 +1,5 @@
 #include <string.h>
+#include <chrono>
 #include <fstream>
 
 #include <spdlog/spdlog.h>
@@ -22,6 +23,7 @@ const float discount_factor = 0.99;
 const float entropy_coef = 1e-3;
 const float learning_rate = 1e-3;
 const int reward_average_window_size = 10;
+const bool use_gae = true;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
@@ -139,6 +141,8 @@ int main(int argc, char *argv[])
     int episode_count = 0;
     std::vector<float> reward_history(reward_average_window_size);
 
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     torch::manual_seed(0);
     for (int update = 0; update < 100000; ++update)
     {
@@ -202,15 +206,20 @@ int main(int argc, char *argv[])
                                    storage.get_masks()[-1])
                              .detach();
         }
-        storage.compute_returns(next_value, false, discount_factor, 0.9);
+        storage.compute_returns(next_value, use_gae, discount_factor, 0.9);
 
         auto update_data = a2c.update(storage);
         storage.after_update();
 
         if (update % 10 == 0)
         {
+            auto total_steps = (update + 1) * batch_size * num_envs;
+            auto run_time = std::chrono::high_resolution_clock::now() - start_time;
+            auto run_time_secs = std::chrono::duration_cast<std::chrono::seconds>(run_time);
+            auto fps = total_steps / (run_time_secs.count() + 1e-9);
             spdlog::info("---");
             spdlog::info("Update: {}", update);
+            spdlog::info("FPS: {}", fps);
             for (const auto &datum : update_data)
             {
                 spdlog::info("{}: {}", datum.name, datum.value);
