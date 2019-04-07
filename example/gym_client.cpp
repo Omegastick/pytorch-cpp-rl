@@ -70,6 +70,14 @@ int main(int argc, char *argv[])
     communicator.send_request(make_request);
     spdlog::info(communicator.get_response<MakeResponse>()->result);
 
+    Request<InfoParam> info_request("info", std::make_shared<InfoParam>());
+    communicator.send_request(info_request);
+    auto env_info = communicator.get_response<InfoResponse>();
+    spdlog::info("Action space: {} - [{}]", env_info->action_space_type,
+                 env_info->action_space_shape);
+    spdlog::info("Observation space: {} - [{}]", env_info->observation_space_type,
+                 env_info->observation_space_shape);
+
     spdlog::info("Resetting environment");
     auto reset_param = std::make_shared<ResetParam>();
     Request<ResetParam> reset_request("reset", reset_param);

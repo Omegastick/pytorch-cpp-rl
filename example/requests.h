@@ -16,6 +16,12 @@ struct Request
     MSGPACK_DEFINE_MAP(method, param)
 };
 
+struct InfoParam
+{
+    int x;
+    MSGPACK_DEFINE_MAP(x);
+};
+
 struct MakeParam
 {
     std::string env_name;
@@ -35,6 +41,16 @@ struct StepParam
     std::vector<std::vector<int>> actions;
     bool render;
     MSGPACK_DEFINE_MAP(actions, render);
+};
+
+struct InfoResponse
+{
+    std::string action_space_type;
+    std::vector<int> action_space_shape;
+    std::string observation_space_type;
+    std::vector<int> observation_space_shape;
+    MSGPACK_DEFINE_MAP(action_space_type, action_space_shape,
+                       observation_space_type, observation_space_shape);
 };
 
 struct MakeResponse

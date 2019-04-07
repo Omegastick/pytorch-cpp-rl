@@ -4,10 +4,11 @@ Contains a class that trains an agent.
 import logging
 from typing import Tuple
 import numpy as np
-from gym.spaces.discrete import Discrete
+import gym
 
 from gym_server.envs import make_vec_envs
-from gym_server.messages import MakeMessage, ResetMessage, StepMessage
+from gym_server.messages import (InfoMessage, MakeMessage, ResetMessage,
+                                 StepMessage)
 from gym_server.zmq_client import ZmqClient
 
 
@@ -21,8 +22,8 @@ class Server:
     """
 
     def __init__(self, zmq_client: ZmqClient):
-        self.zmq_client = zmq_client
-        self.env = None
+        self.zmq_client: ZmqClient = zmq_client
+        self.env: gym.Env = None
         logging.info("Gym server initialized")
 
     def serve(self):
@@ -41,7 +42,17 @@ class Server:
             method = request['method']
             param = request['param']
 
-            if method == 'make':
+            if method == 'info':
+                (action_space_type,
+                 action_space_shape,
+                 observation_space_type,
+                 observation_space_shape) = self.__info()
+                self.zmq_client.send(InfoMessage(action_space_type,
+                                                 action_space_shape,
+                                                 observation_space_type,
+                                                 observation_space_shape))
+
+            elif method == 'make':
                 self.__make(param['env_name'], param['num_envs'],
                             param['gamma'])
                 self.zmq_client.send(MakeMessage())
@@ -60,6 +71,20 @@ class Server:
                                                  result[1],
                                                  result[2],
                                                  result[3]['reward']))
+
+    def info(self):
+        """
+        Return info about the currently loaded environment
+        """
+        action_space_type = self.env.action_space.__class__.__name__
+        if action_space_type == 'Discrete':
+            action_space_shape = [self.env.action_space.n]
+        else:
+            action_space_shape = self.env.action_space.shape
+        observation_space_type = self.env.observation_space.__class__.__name__
+        observation_space_shape = self.env.observation_space.shape
+        return (action_space_type, action_space_shape, observation_space_type,
+                observation_space_shape)
 
     def make(self, env_name, num_envs, gamma):
         """
@@ -82,16 +107,17 @@ class Server:
         """
         Steps the environments.
         """
-        if isinstance(self.env.action_space, Discrete):
+        if isinstance(self.env.action_space, gym.spaces.Discrete):
             actions = actions.squeeze(-1)
         observation, reward, done, info = self.env.step(actions)
-        if isinstance(self.env.action_space, Discrete):
+        if isinstance(self.env.action_space, gym.spaces.Discrete):
             reward = np.expand_dims(reward, -1)
             done = np.expand_dims(done, -1)
         if render:
             self.env.render()
         return observation, reward, done, info
 
+    __info = info
     __make = make
     __reset = reset
     __serve = _serve

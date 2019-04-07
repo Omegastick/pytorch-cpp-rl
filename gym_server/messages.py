@@ -15,7 +15,28 @@ class Message(ABC):
         """
         Creates the JSON for the request.
         """
-        pass
+
+
+class InfoMessage(Message):
+    """
+    Builds the JSON for returning the result of an info() action.
+    """
+
+    def __init__(self, action_space_type, action_space_shape,
+                 observation_space_type, observation_space_shape):
+        self.action_space_type = action_space_type
+        self.action_space_shape = action_space_shape
+        self.observation_space_type = observation_space_type
+        self.observation_space_shape = observation_space_shape
+
+    def to_msg(self) -> bytes:
+        request = {
+            "action_space_type": self.action_space_type,
+            "action_space_shape": self.action_space_shape,
+            "observation_space_type": self.observation_space_type,
+            "observation_space_shape": self.observation_space_shape
+        }
+        return msgpack.packb(request)
 
 
 class MakeMessage(Message):
