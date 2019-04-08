@@ -11,6 +11,7 @@ class RolloutStorage
   private:
     torch::Tensor observations, hidden_states, rewards, value_predictions,
         returns, action_log_probs, actions, masks;
+    torch::Device device;
     unsigned int num_steps;
     unsigned int step;
 
@@ -19,7 +20,8 @@ class RolloutStorage
                    unsigned int num_processes,
                    torch::IntArrayRef obs_shape,
                    ActionSpace action_space,
-                   unsigned int hidden_state_size);
+                   unsigned int hidden_state_size,
+                   torch::Device device);
 
     void after_update();
     void compute_returns(torch::Tensor next_value,

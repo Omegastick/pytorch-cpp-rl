@@ -10,19 +10,21 @@ RolloutStorage::RolloutStorage(unsigned int num_steps,
                                unsigned int num_processes,
                                torch::IntArrayRef obs_shape,
                                ActionSpace action_space,
-                               unsigned int hidden_state_size)
-    : num_steps(num_steps), step(0)
+                               unsigned int hidden_state_size,
+                               torch::Device device)
+    : device(device), num_steps(num_steps), step(0)
 {
     std::vector<long> observations_shape{num_steps + 1, num_processes};
     observations_shape.insert(observations_shape.end(), obs_shape.begin(),
                               obs_shape.end());
-    observations = torch::zeros(observations_shape);
+    observations = torch::zeros(observations_shape, torch::TensorOptions(device));
     hidden_states = torch::zeros({num_steps + 1, num_processes,
-                                  hidden_state_size});
-    rewards = torch::zeros({num_steps, num_processes, 1});
-    value_predictions = torch::zeros({num_steps + 1, num_processes, 1});
-    returns = torch::zeros({num_steps + 1, num_processes, 1});
-    action_log_probs = torch::zeros({num_steps, num_processes, 1});
+                                  hidden_state_size},
+                                 torch::TensorOptions(device));
+    rewards = torch::zeros({num_steps, num_processes, 1}, torch::TensorOptions(device));
+    value_predictions = torch::zeros({num_steps + 1, num_processes, 1}, torch::TensorOptions(device));
+    returns = torch::zeros({num_steps + 1, num_processes, 1}, torch::TensorOptions(device));
+    action_log_probs = torch::zeros({num_steps, num_processes, 1}, torch::TensorOptions(device));
     int num_actions;
     if (action_space.type == "Discrete")
     {
@@ -32,12 +34,12 @@ RolloutStorage::RolloutStorage(unsigned int num_steps,
     {
         num_actions = action_space.shape[0];
     }
-    actions = torch::zeros({num_steps, num_processes, num_actions});
+    actions = torch::zeros({num_steps, num_processes, num_actions}, torch::TensorOptions(device));
     if (action_space.type == "Discrete")
     {
         actions = actions.to(torch::kLong);
     }
-    masks = torch::ones({num_steps + 1, num_processes, 1});
+    masks = torch::ones({num_steps + 1, num_processes, 1}, torch::TensorOptions(device));
 }
 
 void RolloutStorage::after_update()
@@ -55,7 +57,7 @@ void RolloutStorage::compute_returns(torch::Tensor next_value,
     if (use_gae)
     {
         value_predictions[-1] = next_value;
-        torch::Tensor gae = torch::zeros({rewards.size(1), 1});
+        torch::Tensor gae = torch::zeros({rewards.size(1), 1}, torch::TensorOptions(device));
         for (int step = rewards.size(0) - 1; step >= 0; --step)
         {
             auto delta = (rewards[step] +
@@ -106,6 +108,7 @@ void RolloutStorage::set_first_observation(torch::Tensor observation)
 
 void RolloutStorage::to(torch::Device device)
 {
+    this->device = device;
     observations = observations.to(device);
     hidden_states = hidden_states.to(device);
     rewards = rewards.to(device);
@@ -120,7 +123,7 @@ TEST_CASE("RolloutStorage")
 {
     SUBCASE("Initializes tensors to correct sizes")
     {
-        RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
+        RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
 
         CHECK(storage.get_observations().size(0) == 4);
         CHECK(storage.get_observations().size(1) == 5);
@@ -160,14 +163,14 @@ TEST_CASE("RolloutStorage")
     {
         SUBCASE("Long")
         {
-            RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
+            RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
 
             CHECK(storage.get_actions().dtype() == torch::kLong);
         }
 
         SUBCASE("Float")
         {
-            RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Box", {3}}, 10);
+            RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Box", {3}}, 10, torch::kCPU);
 
             CHECK(storage.get_actions().dtype() == torch::kFloat);
         }
@@ -175,13 +178,13 @@ TEST_CASE("RolloutStorage")
 
     SUBCASE("to() doesn't crash")
     {
-        RolloutStorage storage(3, 4, {5}, ActionSpace{"Discrete", {3}}, 10);
+        RolloutStorage storage(3, 4, {5}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
         storage.to(torch::kCPU);
     }
 
     SUBCASE("insert() inserts values")
     {
-        RolloutStorage storage(3, 4, {5, 2}, ActionSpace{"Discrete", {3}}, 10);
+        RolloutStorage storage(3, 4, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
         storage.insert(torch::rand({4, 5, 2}) + 1,
                        torch::rand({4, 10}) + 1,
                        torch::randint(1, 3, {4, 1}),
@@ -220,7 +223,7 @@ TEST_CASE("RolloutStorage")
 
     SUBCASE("compute_returns()")
     {
-        RolloutStorage storage(3, 2, {4}, ActionSpace{"Discrete", {3}}, 5);
+        RolloutStorage storage(3, 2, {4}, ActionSpace{"Discrete", {3}}, 5, torch::kCPU);
 
         std::vector<float> value_preds{0, 1};
         std::vector<float> rewards{0, 1};
@@ -319,7 +322,7 @@ TEST_CASE("RolloutStorage")
     SUBCASE("after_update() copies last observation, hidden state and mask to "
             "the 0th timestep")
     {
-        RolloutStorage storage(3, 2, {3}, ActionSpace{"Discrete", {3}}, 2);
+        RolloutStorage storage(3, 2, {3}, ActionSpace{"Discrete", {3}}, 2, torch::kCPU);
 
         std::vector<float> obs{0, 1, 2, 1, 2, 3};
         std::vector<float> hidden_states{0, 1, 0, 1};

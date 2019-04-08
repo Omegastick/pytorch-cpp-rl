@@ -23,18 +23,19 @@ using namespace cpprl;
 const int batch_size = 5;
 const float discount_factor = 0.99;
 const float entropy_coef = 1e-3;
-const float learning_rate = 1e-3;
+const float learning_rate = 1e-4;
 const int reward_average_window_size = 10;
 const bool use_gae = true;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
 const std::string env_name = "PongNoFrameskip-v4";
-const int num_envs = 4;
+const int num_envs = 6;
 const float env_gamma = discount_factor; // Set to -1 to disable
 
 // Model hyperparameters
-const int hidden_size = 64;
+const int hidden_size = 128;
+const bool use_cuda = true;
 
 std::vector<float> flatten_vector(std::vector<float> const &input)
 {
@@ -64,6 +65,8 @@ int main(int argc, char *argv[])
 
     torch::set_num_threads(1);
     torch::manual_seed(0);
+
+    torch::Device device = use_cuda ? torch::kCUDA : torch::kCPU;
 
     spdlog::info("Connecting to gym server");
     Communicator communicator("tcp://127.0.0.1:10201");
@@ -96,12 +99,12 @@ int main(int argc, char *argv[])
     if (env_info->observation_space_shape.size() > 1)
     {
         auto observation_vec = flatten_vector(communicator.get_response<CnnResetResponse>()->observation);
-        observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+        observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
     }
     else
     {
         auto observation_vec = flatten_vector(communicator.get_response<MlpResetResponse>()->observation);
-        observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+        observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
     }
 
     std::shared_ptr<NNBase> base;
@@ -113,9 +116,11 @@ int main(int argc, char *argv[])
     {
         base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], false, hidden_size);
     }
+    base->to(device);
     ActionSpace space{"Discrete", env_info->action_space_shape};
     Policy policy(space, base);
-    RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size);
+    policy->to(device);
+    RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
     A2C a2c(policy, value_loss_coef, entropy_coef, learning_rate);
 
     storage.set_first_observation(observation);
@@ -190,7 +195,8 @@ int main(int argc, char *argv[])
                                          torch::Tensor(),
                                          torch::ones({num_envs, 1}));
             }
-            long *actions_array = act_result[1].data<long>();
+            auto actions_tensor = act_result[1].cpu();
+            long *actions_array = actions_tensor.data<long>();
             std::vector<std::vector<int>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i)
             {
@@ -209,7 +215,7 @@ int main(int argc, char *argv[])
             {
                 auto step_result = communicator.get_response<CnnStepResponse>();
                 auto observation_vec = flatten_vector(step_result->observation);
-                observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+                observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
                 rewards = flatten_vector(step_result->reward);
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
@@ -218,7 +224,7 @@ int main(int argc, char *argv[])
             {
                 auto step_result = communicator.get_response<MlpStepResponse>();
                 auto observation_vec = flatten_vector(step_result->observation);
-                observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+                observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
                 rewards = flatten_vector(step_result->reward);
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
@@ -233,18 +239,18 @@ int main(int argc, char *argv[])
                     episode_count++;
                 }
             }
-            auto dones = torch::zeros({num_envs, 1});
+            auto dones = torch::zeros({num_envs, 1}, TensorOptions(device));
             for (int i = 0; i < num_envs; ++i)
             {
                 dones[i][0] = static_cast<int>(dones_vec[i][0]);
             }
 
             storage.insert(observation,
-                           torch::zeros({num_envs, hidden_size}),
+                           torch::zeros({num_envs, hidden_size}, TensorOptions(device)),
                            act_result[1],
                            act_result[2],
                            act_result[0],
-                           torch::from_blob(rewards.data(), {num_envs, 1}),
+                           torch::from_blob(rewards.data(), {num_envs, 1}).to(device),
                            1 - dones);
         }
 

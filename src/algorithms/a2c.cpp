@@ -77,7 +77,7 @@ TEST_CASE("A2C")
         auto base = std::make_shared<MlpBase>(1, false, 5);
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
-        RolloutStorage storage(5, 2, {1}, space, 5);
+        RolloutStorage storage(5, 2, {1}, space, 5, torch::kCPU);
         A2C a2c(policy, 0.5, 1e-3, 0.001);
 
         // The reward is the action
@@ -146,7 +146,7 @@ TEST_CASE("A2C")
         auto base = std::make_shared<MlpBase>(1, false, 5);
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
-        RolloutStorage storage(5, 2, {1}, space, 5);
+        RolloutStorage storage(5, 2, {1}, space, 5, torch::kCPU);
         A2C a2c(policy, 0.5, 1e-7, 0.0001);
 
         // The game is: If the action matches the input, give a reward of 1, otherwise -1
