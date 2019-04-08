@@ -46,9 +46,9 @@ struct StepParam
 struct InfoResponse
 {
     std::string action_space_type;
-    std::vector<int> action_space_shape;
+    std::vector<long> action_space_shape;
     std::string observation_space_type;
-    std::vector<int> observation_space_shape;
+    std::vector<long> observation_space_shape;
     MSGPACK_DEFINE_MAP(action_space_type, action_space_shape,
                        observation_space_type, observation_space_shape);
 };
@@ -59,7 +59,13 @@ struct MakeResponse
     MSGPACK_DEFINE_MAP(result);
 };
 
-struct ResetResponse
+struct CnnResetResponse
+{
+    std::vector<std::vector<std::vector<std::vector<float>>>> observation;
+    MSGPACK_DEFINE_MAP(observation);
+};
+
+struct MlpResetResponse
 {
     std::vector<std::vector<float>> observation;
     MSGPACK_DEFINE_MAP(observation);
@@ -67,10 +73,20 @@ struct ResetResponse
 
 struct StepResponse
 {
-    std::vector<std::vector<float>> observation;
     std::vector<std::vector<float>> reward;
     std::vector<std::vector<bool>> done;
     std::vector<std::vector<float>> real_reward;
+};
+
+struct CnnStepResponse : StepResponse
+{
+    std::vector<std::vector<std::vector<std::vector<float>>>> observation;
+    MSGPACK_DEFINE_MAP(observation, reward, done, real_reward);
+};
+
+struct MlpStepResponse : StepResponse
+{
+    std::vector<std::vector<float>> observation;
     MSGPACK_DEFINE_MAP(observation, reward, done, real_reward);
 };
 }

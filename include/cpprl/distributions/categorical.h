@@ -25,6 +25,7 @@ class Categorical : public Distribution
     torch::Tensor log_prob(torch::Tensor value);
     torch::Tensor sample(torch::IntArrayRef sample_shape = {});
 
+    inline torch::Tensor get_logits() { return logits; }
     inline torch::Tensor get_probs() { return probs; }
 };
 }

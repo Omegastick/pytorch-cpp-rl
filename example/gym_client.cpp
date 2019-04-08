@@ -3,12 +3,14 @@
 #include <fstream>
 
 #include <spdlog/spdlog.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <nlohmann/json.hpp>
 
 #include <cpprl/spaces.h>
 #include <cpprl/storage.h>
 #include <cpprl/algorithms/a2c.h>
 #include <cpprl/model/mlp_base.h>
+#include <cpprl/model/cnn_base.h>
 #include <cpprl/model/policy.h>
 
 #include "communicator.h"
@@ -27,22 +29,27 @@ const bool use_gae = true;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
-const std::string env_name = "LunarLander-v2";
-const int num_envs = 8;
+const std::string env_name = "PongNoFrameskip-v4";
+const int num_envs = 4;
 const float env_gamma = discount_factor; // Set to -1 to disable
 
 // Model hyperparameters
-const int actions = 4;
-const int observation_size = 8;
 const int hidden_size = 64;
 
-template <typename T>
-std::vector<T> flatten_2d_vector(std::vector<std::vector<T>> const &input)
+std::vector<float> flatten_vector(std::vector<float> const &input)
 {
-    std::vector<T> output;
+    return input;
+}
 
-    for (auto const &sub_vector : input)
+template <typename T>
+std::vector<float> flatten_vector(std::vector<std::vector<T>> const &input)
+{
+    std::vector<float> output;
+
+    for (auto const &element : input)
     {
+        auto sub_vector = flatten_vector(element);
+
         output.reserve(output.size() + sub_vector.size());
         output.insert(output.end(), sub_vector.cbegin(), sub_vector.cend());
     }
@@ -82,13 +89,33 @@ int main(int argc, char *argv[])
     auto reset_param = std::make_shared<ResetParam>();
     Request<ResetParam> reset_request("reset", reset_param);
     communicator.send_request(reset_request);
-    auto observation_vec = flatten_2d_vector<float>(communicator.get_response<ResetResponse>()->observation);
-    auto observation = torch::from_blob(observation_vec.data(), {num_envs, observation_size});
 
-    auto base = std::make_shared<MlpBase>(observation_size, false, hidden_size);
-    ActionSpace space{"Discrete", {actions}};
+    auto observation_shape = env_info->observation_space_shape;
+    observation_shape.insert(observation_shape.begin(), num_envs);
+    torch::Tensor observation;
+    if (env_info->observation_space_shape.size() > 1)
+    {
+        auto observation_vec = flatten_vector(communicator.get_response<CnnResetResponse>()->observation);
+        observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+    }
+    else
+    {
+        auto observation_vec = flatten_vector(communicator.get_response<MlpResetResponse>()->observation);
+        observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+    }
+
+    std::shared_ptr<NNBase> base;
+    if (env_info->observation_space_shape.size() == 1)
+    {
+        base = std::make_shared<MlpBase>(env_info->observation_space_shape[0], false, hidden_size);
+    }
+    else
+    {
+        base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], false, hidden_size);
+    }
+    ActionSpace space{"Discrete", env_info->action_space_shape};
     Policy policy(space, base);
-    RolloutStorage storage(batch_size, num_envs, {observation_size}, space, hidden_size);
+    RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size);
     A2C a2c(policy, value_loss_coef, entropy_coef, learning_rate);
 
     storage.set_first_observation(observation);
@@ -175,15 +202,31 @@ int main(int argc, char *argv[])
             step_param->render = false;
             Request<StepParam> step_request("step", step_param);
             communicator.send_request(step_request);
-            auto step_result = communicator.get_response<StepResponse>();
-            observation_vec = flatten_2d_vector<float>(step_result->observation);
-            observation = torch::from_blob(observation_vec.data(), {num_envs, observation_size});
-            auto rewards = flatten_2d_vector<float>(step_result->reward);
-            auto real_rewards = flatten_2d_vector<float>(step_result->real_reward);
+            std::vector<float> rewards;
+            std::vector<float> real_rewards;
+            std::vector<std::vector<bool>> dones_vec;
+            if (env_info->observation_space_shape.size() > 1)
+            {
+                auto step_result = communicator.get_response<CnnStepResponse>();
+                auto observation_vec = flatten_vector(step_result->observation);
+                observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+                rewards = flatten_vector(step_result->reward);
+                real_rewards = flatten_vector(step_result->real_reward);
+                dones_vec = step_result->done;
+            }
+            else
+            {
+                auto step_result = communicator.get_response<MlpStepResponse>();
+                auto observation_vec = flatten_vector(step_result->observation);
+                observation = torch::from_blob(observation_vec.data(), observation_shape).clone();
+                rewards = flatten_vector(step_result->reward);
+                real_rewards = flatten_vector(step_result->real_reward);
+                dones_vec = step_result->done;
+            }
             for (int i = 0; i < num_envs; ++i)
             {
                 running_rewards[i] += real_rewards[i];
-                if (step_result->done[i][0])
+                if (dones_vec[i][0])
                 {
                     reward_history[episode_count % reward_average_window_size] = running_rewards[i];
                     running_rewards[i] = 0;
@@ -193,7 +236,7 @@ int main(int argc, char *argv[])
             auto dones = torch::zeros({num_envs, 1});
             for (int i = 0; i < num_envs; ++i)
             {
-                dones[i][0] = static_cast<int>(step_result->done[i][0]);
+                dones[i][0] = static_cast<int>(dones_vec[i][0]);
             }
 
             storage.insert(observation,
