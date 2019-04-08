@@ -8,6 +8,32 @@ project(CppRl
 # Project-wide properties
 set(CMAKE_CXX_STANDARD 17)
 
+# Cppcheck
+list(APPEND CPPCHECK_ARGS
+    --enable=warning
+    --std=c++14
+    --verbose
+    --force
+    --quiet
+    --inline-suppr
+    --error-exitcode=1
+    --language=c++
+    --config-exclude=${CMAKE_CURRENT_LIST_DIR}/src/third_party
+    --suppressions-list=${CMAKE_CURRENT_LIST_DIR}/CppCheckSuppressions.txt 
+    -I ${CMAKE_CURRENT_LIST_DIR}/src 
+    -I ${CMAKE_CURRENT_LIST_DIR}/include 
+    -I ${CMAKE_CURRENT_LIST_DIR}/lib/spdlog/include 
+    -I ${CMAKE_CURRENT_LIST_DIR}/example 
+    ${CMAKE_CURRENT_LIST_DIR}/src
+    ${CMAKE_CURRENT_LIST_DIR}/example
+)
+
+add_custom_target(
+    check
+    COMMAND cppcheck ${CPPCHECK_ARGS}
+    COMMENT "Running Cppcheck"
+)
+
 # Dependencies
 ## PyTorch
 find_package(Torch REQUIRED)

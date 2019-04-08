@@ -119,6 +119,7 @@ void RolloutStorage::to(torch::Device device)
     masks = masks.to(device);
 }
 
+// cppcheck-suppress syntaxError
 TEST_CASE("RolloutStorage")
 {
     SUBCASE("Initializes tensors to correct sizes")
