@@ -23,19 +23,19 @@ using namespace cpprl;
 const int batch_size = 5;
 const float discount_factor = 0.99;
 const float entropy_coef = 1e-3;
-const float learning_rate = 1e-4;
+const float learning_rate = 1e-3;
 const int reward_average_window_size = 10;
 const bool use_gae = true;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
-const std::string env_name = "PongNoFrameskip-v4";
-const int num_envs = 6;
+const std::string env_name = "LunarLander-v2";
+const int num_envs = 8;
 const float env_gamma = discount_factor; // Set to -1 to disable
 
 // Model hyperparameters
-const int hidden_size = 128;
-const bool use_cuda = true;
+const int hidden_size = 64;
+const bool use_cuda = false;
 
 std::vector<float> flatten_vector(std::vector<float> const &input)
 {

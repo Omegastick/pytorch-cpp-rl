@@ -1,7 +1,10 @@
 #pragma once
 
+#include <memory>
+
 #include <torch/torch.h>
 
+#include "cpprl/generators/generator.h"
 #include "cpprl/spaces.h"
 
 namespace cpprl
@@ -28,6 +31,8 @@ class RolloutStorage
                          bool use_gae,
                          float gamma,
                          float tau);
+    std::unique_ptr<Generator> feed_forward_generator(torch::Tensor advantages,
+                                                      int num_mini_batch);
     void insert(torch::Tensor observation,
                 torch::Tensor hidden_state,
                 torch::Tensor action,
@@ -35,6 +40,8 @@ class RolloutStorage
                 torch::Tensor value_prediction,
                 torch::Tensor reward,
                 torch::Tensor mask);
+    std::unique_ptr<Generator> recurrent_generator(torch::Tensor advantages,
+                                                   int num_mini_batch);
     void set_first_observation(torch::Tensor observation);
     void to(torch::Device device);
 
