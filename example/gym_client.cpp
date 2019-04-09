@@ -96,15 +96,16 @@ int main(int argc, char *argv[])
     auto observation_shape = env_info->observation_space_shape;
     observation_shape.insert(observation_shape.begin(), num_envs);
     torch::Tensor observation;
+    std::vector<float> observation_vec;
     if (env_info->observation_space_shape.size() > 1)
     {
-        auto observation_vec = flatten_vector(communicator.get_response<CnnResetResponse>()->observation);
-        observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
+        observation_vec = flatten_vector(communicator.get_response<CnnResetResponse>()->observation);
+        observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
     }
     else
     {
-        auto observation_vec = flatten_vector(communicator.get_response<MlpResetResponse>()->observation);
-        observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
+        observation_vec = flatten_vector(communicator.get_response<MlpResetResponse>()->observation);
+        observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
     }
 
     std::shared_ptr<NNBase> base;
@@ -214,8 +215,8 @@ int main(int argc, char *argv[])
             if (env_info->observation_space_shape.size() > 1)
             {
                 auto step_result = communicator.get_response<CnnStepResponse>();
-                auto observation_vec = flatten_vector(step_result->observation);
-                observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
+                observation_vec = flatten_vector(step_result->observation);
+                observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
                 rewards = flatten_vector(step_result->reward);
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
@@ -223,8 +224,8 @@ int main(int argc, char *argv[])
             else
             {
                 auto step_result = communicator.get_response<MlpStepResponse>();
-                auto observation_vec = flatten_vector(step_result->observation);
-                observation = torch::from_blob(observation_vec.data(), observation_shape).clone().to(device);
+                observation_vec = flatten_vector(step_result->observation);
+                observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
                 rewards = flatten_vector(step_result->reward);
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
