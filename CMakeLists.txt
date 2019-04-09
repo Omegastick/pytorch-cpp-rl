@@ -19,6 +19,7 @@ list(APPEND CPPCHECK_ARGS
     --error-exitcode=1
     --language=c++
     --config-exclude=${CMAKE_CURRENT_LIST_DIR}/src/third_party
+    --config-exclude=${CMAKE_CURRENT_LIST_DIR}/lib
     --suppressions-list=${CMAKE_CURRENT_LIST_DIR}/CppCheckSuppressions.txt 
     -I ${CMAKE_CURRENT_LIST_DIR}/src 
     -I ${CMAKE_CURRENT_LIST_DIR}/include 

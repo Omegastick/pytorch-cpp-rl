@@ -12,20 +12,23 @@ namespace cpprl
 class Policy;
 class ROlloutStorage;
 
-class A2C : public Algorithm
+class PPO : public Algorithm
 {
   private:
     Policy &policy;
-    float value_loss_coef, entropy_coef, max_grad_norm;
+    float clip_param, value_loss_coef, entropy_coef, max_grad_norm;
+    int epoch_count, num_mini_batch;
     std::unique_ptr<torch::optim::Optimizer> optimizer;
 
   public:
-    A2C(Policy &policy,
+    PPO(Policy &policy,
+        float clip_param,
+        int epoch_count,
+        int num_mini_batch,
         float value_loss_coef,
         float entropy_coef,
         float learning_rate,
         float epsilon = 1e-8,
-        float alpha = 0.99,
         float max_grad_norm = 0.5);
 
     std::vector<UpdateDatum> update(RolloutStorage &rollouts);
