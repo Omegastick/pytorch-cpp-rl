@@ -1,10 +1,12 @@
 #include <chrono>
 #include <memory>
 
+#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/algorithms/ppo.h"
 #include "cpprl/algorithms/algorithm.h"
+#include "cpprl/generators/generator.h"
 #include "cpprl/model/mlp_base.h"
 #include "cpprl/model/policy.h"
 #include "cpprl/storage.h"
@@ -16,7 +18,7 @@ namespace cpprl
 
 PPO::PPO(Policy &policy,
          float clip_param,
-         int epoch_count,
+         int num_epoch,
          int num_mini_batch,
          float value_loss_coef,
          float entropy_coef,
@@ -28,16 +30,100 @@ PPO::PPO(Policy &policy,
       value_loss_coef(value_loss_coef),
       entropy_coef(entropy_coef),
       max_grad_norm(max_grad_norm),
-      epoch_count(epoch_count),
+      num_epoch(num_epoch),
       num_mini_batch(num_mini_batch),
       optimizer(std::make_unique<torch::optim::Adam>(
           policy->parameters(),
           torch::optim::AdamOptions(learning_rate)
               .eps(epsilon))) {}
 
-std::vector<UpdateDatum> PPO::update(RolloutStorage & /*rollouts*/)
+std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts)
 {
-    return {};
+    // Calculate advantages
+    auto returns = rollouts.get_returns();
+    auto value_preds = rollouts.get_value_predictions();
+    auto advantages = (returns.narrow(0, 0, returns.size(0) - 1) -
+                       value_preds.narrow(0, 0, value_preds.size(0) - 1));
+
+    // Normalize advantages
+    advantages = (advantages - advantages.mean() / (advantages.std() + 1e-5));
+
+    float total_value_loss = 0;
+    float total_action_loss = 0;
+    float total_entropy = 0;
+
+    // Epoch loop
+    for (int epoch = 0; epoch < num_epoch; ++epoch)
+    {
+        // Shuffle rollouts
+        std::unique_ptr<Generator> data_generator;
+        if (policy->is_recurrent())
+        {
+            spdlog::error("Recurrent policies are not implemented yet for PPO");
+            throw std::exception();
+        }
+        else
+        {
+            data_generator = rollouts.feed_forward_generator(advantages,
+                                                             num_mini_batch);
+        }
+
+        // Loop through shuffled rollout
+        while (!data_generator->done())
+        {
+            MiniBatch mini_batch = data_generator->next();
+
+            // Run evaluation on minibatch
+            auto evaluate_result = policy->evaluate_actions(
+                mini_batch.observations,
+                mini_batch.hidden_states,
+                mini_batch.masks,
+                mini_batch.actions);
+
+            // Calculate difference ratio between old and new action probabilites
+            auto ratio = torch::exp(evaluate_result[1] -
+                                    mini_batch.action_log_probs);
+
+            // PPO loss formula
+            auto surr_1 = ratio * mini_batch.advantages;
+            auto surr_2 = (torch::clamp(ratio,
+                                        1.0 - clip_param,
+                                        1.0 + clip_param) *
+                           mini_batch.advantages);
+            auto action_loss = -torch::min(surr_1, surr_2).mean();
+
+            // Value loss
+            auto value_loss = 0.5 * (mini_batch.returns - evaluate_result[0])
+                                        .pow(2)
+                                        .mean();
+            // TODO: Implement clipped value loss
+
+            // Total loss
+            auto loss = (value_loss * value_loss_coef +
+                         action_loss -
+                         evaluate_result[2] * entropy_coef);
+
+            // Step optimizer
+            optimizer->zero_grad();
+            loss.backward();
+            // TODO: Implement gradient norm clipping
+            optimizer->step();
+
+            total_value_loss += value_loss.item().toFloat();
+            total_action_loss += action_loss.item().toFloat();
+            total_entropy += evaluate_result[2].item().toFloat();
+        }
+    }
+
+    auto num_updates = num_epoch * num_mini_batch;
+
+    total_value_loss /= num_updates;
+    total_action_loss /= num_updates;
+    total_entropy /= num_updates;
+
+    return {{"Value loss", total_value_loss},
+            {"Action loss", total_action_loss},
+            {"Entropy", total_entropy}};
 }
 
 TEST_CASE("PPO")

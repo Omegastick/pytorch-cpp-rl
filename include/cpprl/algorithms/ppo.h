@@ -17,13 +17,13 @@ class PPO : public Algorithm
   private:
     Policy &policy;
     float clip_param, value_loss_coef, entropy_coef, max_grad_norm;
-    int epoch_count, num_mini_batch;
+    int num_epoch, num_mini_batch;
     std::unique_ptr<torch::optim::Optimizer> optimizer;
 
   public:
     PPO(Policy &policy,
         float clip_param,
-        int epoch_count,
+        int num_epoch,
         int num_mini_batch,
         float value_loss_coef,
         float entropy_coef,
