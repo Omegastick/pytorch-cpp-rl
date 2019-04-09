@@ -1,5 +1,10 @@
+#include <memory>
+#include <vector>
+
+#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
+#include "cpprl/generators/feed_forward_generator.h"
 #include "cpprl/storage.h"
 #include "cpprl/spaces.h"
 #include "third_party/doctest.h"
@@ -80,6 +85,32 @@ void RolloutStorage::compute_returns(torch::Tensor next_value,
                              rewards[step]);
         }
     }
+}
+
+std::unique_ptr<Generator> RolloutStorage::feed_forward_generator(
+    torch::Tensor advantages, int num_mini_batch)
+{
+    auto num_steps = actions.size(0);
+    auto num_processes = actions.size(1);
+    auto batch_size = num_processes * num_steps;
+    if (batch_size < num_mini_batch)
+    {
+        spdlog::error("PPO needs the number of processes ({}) * the number of "
+                      "steps ({}) = {} to be greater than or equal to the number "
+                      "of minibatches");
+        throw std::exception();
+    }
+    auto mini_batch_size = batch_size / num_mini_batch;
+    return std::make_unique<FeedForwardGenerator>(
+        mini_batch_size,
+        observations,
+        hidden_states,
+        actions,
+        value_predictions,
+        returns,
+        masks,
+        action_log_probs,
+        advantages);
 }
 
 void RolloutStorage::insert(torch::Tensor observation,

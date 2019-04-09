@@ -1,5 +1,7 @@
+#include <algorithm>
 #include <vector>
 
+#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/generators/feed_forward_generator.h"
@@ -8,33 +10,83 @@
 
 namespace cpprl
 {
-FeedForwardGenerator::FeedForwardGenerator(int /*num_mini_batch*/,
-                                           torch::Tensor /*observations*/,
-                                           torch::Tensor /*hidden_states*/,
-                                           torch::Tensor /*actions*/,
-                                           torch::Tensor /*value_predictions*/,
-                                           torch::Tensor /*returns*/,
-                                           torch::Tensor /*masks*/,
-                                           torch::Tensor /*old_action_log_probs*/,
-                                           torch::Tensor /*advantages*/) {}
+FeedForwardGenerator::FeedForwardGenerator(int mini_batch_size,
+                                           torch::Tensor observations,
+                                           torch::Tensor hidden_states,
+                                           torch::Tensor actions,
+                                           torch::Tensor value_predictions,
+                                           torch::Tensor returns,
+                                           torch::Tensor masks,
+                                           torch::Tensor action_log_probs,
+                                           torch::Tensor advantages)
+    : observations(observations),
+      hidden_states(hidden_states),
+      actions(actions),
+      value_predictions(value_predictions),
+      returns(returns),
+      masks(masks),
+      action_log_probs(action_log_probs),
+      advantages(advantages),
+      index(0)
+{
+    int batch_size = advantages.numel();
+    indices = torch::randperm(batch_size,
+                              torch::TensorOptions(torch::kLong))
+                  .view({-1, mini_batch_size});
+}
 
 bool FeedForwardGenerator::done() const
 {
-    return false;
+    return index >= indices.size(0);
 }
 
 MiniBatch FeedForwardGenerator::next()
 {
-    return MiniBatch(torch::Tensor(), torch::Tensor(), torch::Tensor(),
-                     torch::Tensor(), torch::Tensor(), torch::Tensor(),
-                     torch::Tensor(), torch::Tensor());
+    if (index >= indices.size(0))
+    {
+        spdlog::error("No minibatches left in generator. Index {}, minibatch "
+                      "count: {}.",
+                      index, indices.size(0));
+        throw std::exception();
+    }
+
+    MiniBatch mini_batch;
+
+    int timesteps = observations.size(0) - 1;
+
+    auto observations_shape = observations.sizes().vec();
+    observations_shape[0] = -1;
+    mini_batch.observations = observations.narrow(0, 0, timesteps)
+                                  .view(observations_shape)
+                                  .index(indices[index]);
+    mini_batch.hidden_states = hidden_states.narrow(0, 0, timesteps)
+                                   .view({-1, hidden_states.size(-1)})
+                                   .index(indices[index]);
+    mini_batch.actions = actions.view({-1, actions.size(-1)})
+                             .index(indices[index]);
+    mini_batch.value_predictions = value_predictions.narrow(0, 0, timesteps)
+                                       .view({-1, 1})
+                                       .index(indices[index]);
+    mini_batch.returns = returns.narrow(0, 0, timesteps)
+                             .view({-1, 1})
+                             .index(indices[index]);
+    mini_batch.masks = masks.narrow(0, 0, timesteps)
+                           .view({-1, 1})
+                           .index(indices[index]);
+    mini_batch.action_log_probs = action_log_probs.view({-1, 1})
+                                      .index(indices[index]);
+    mini_batch.advantages = advantages.view({-1, 1})
+                                .index(indices[index]);
+
+    index++;
+    return mini_batch;
 }
 
 TEST_CASE("FeedForwardGenerator")
 {
-    FeedForwardGenerator generator(3, torch::rand({15, 4}), torch::rand({15, 3}),
-                                   torch::rand({15, 1}), torch::rand({15, 1}),
-                                   torch::rand({15, 1}), torch::ones({15, 1}),
+    FeedForwardGenerator generator(5, torch::rand({16, 4}), torch::rand({16, 3}),
+                                   torch::rand({15, 1}), torch::rand({16, 1}),
+                                   torch::rand({16, 1}), torch::ones({16, 1}),
                                    torch::rand({15, 1}), torch::rand({15, 1}));
 
     SUBCASE("Minibatch tensors are correct sizes")
@@ -47,7 +99,7 @@ TEST_CASE("FeedForwardGenerator")
         CHECK(minibatch.value_predictions.sizes().vec() == std::vector<long>{5, 1});
         CHECK(minibatch.returns.sizes().vec() == std::vector<long>{5, 1});
         CHECK(minibatch.masks.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.old_action_log_probs.sizes().vec() == std::vector<long>{5, 1});
+        CHECK(minibatch.action_log_probs.sizes().vec() == std::vector<long>{5, 1});
         CHECK(minibatch.advantages.sizes().vec() == std::vector<long>{5, 1});
     }
 

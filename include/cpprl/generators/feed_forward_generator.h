@@ -6,21 +6,22 @@
 
 namespace cpprl
 {
-class FeedForwardGenerator : Generator
+class FeedForwardGenerator : public Generator
 {
   private:
     torch::Tensor observations, hidden_states, actions, value_predictions,
-        returns, masks, old_action_log_probs, advantages;
+        returns, masks, action_log_probs, advantages, indices;
+    int index;
 
   public:
-    FeedForwardGenerator(int num_mini_batch,
+    FeedForwardGenerator(int mini_batch_size,
                          torch::Tensor observations,
                          torch::Tensor hidden_states,
                          torch::Tensor actions,
                          torch::Tensor value_predictions,
                          torch::Tensor returns,
                          torch::Tensor masks,
-                         torch::Tensor old_action_log_probs,
+                         torch::Tensor action_log_probs,
                          torch::Tensor advantages);
 
     virtual bool done() const;
