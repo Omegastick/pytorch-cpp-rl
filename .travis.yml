@@ -1,6 +1,7 @@
 dist: trusty
 language: c++
 compiler: gcc
+install: export CXX="g++-8"
 git:
   submodules: false
 addons:
@@ -10,7 +11,6 @@ addons:
     packages:
       - gcc-8
       - g++-8
-      - libstdc++-8-dev
       - cppcheck
 before_install:
   # Load git submodules
