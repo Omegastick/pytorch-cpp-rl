@@ -23,7 +23,7 @@ before_install:
   - unzip /tmp/libtorch.zip -d /tmp/
   # Install cppcheck
   - git clone https://github.com/danmar/cppcheck /tmp/cppcheck
-  - mkdir -p /tmp/cppcheck/build && cd /tmp/cppcheck/build && cmake .. && make -j2 && sudo make install
+  - mkdir -p /tmp/cppcheck/build && cd /tmp/cppcheck/build && cmake .. && make -j2 && sudo make install && cd -
 script:
   # Print compiler versions
   - gcc -v && g++ -v && cmake --version
