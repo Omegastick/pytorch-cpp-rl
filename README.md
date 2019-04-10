@@ -1,4 +1,5 @@
 # CppRl - PyTorch C++ Reinforcement Learning
+![](https://travis-ci.org/Omegastick/pytorch-cpp-rl.svg?branch=master)
 
 CppRl is a reinforcement learning framework, written using the [PyTorch C++ frontend](https://pytorch.org/cppdocs/frontend.html).
 
