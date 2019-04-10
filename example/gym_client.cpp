@@ -6,14 +6,7 @@
 #include <spdlog/sinks/basic_file_sink.h>
 #include <nlohmann/json.hpp>
 
-#include <cpprl/spaces.h>
-#include <cpprl/storage.h>
-#include <cpprl/algorithms/algorithm.h>
-#include <cpprl/algorithms/a2c.h>
-#include <cpprl/algorithms/ppo.h>
-#include <cpprl/model/mlp_base.h>
-#include <cpprl/model/cnn_base.h>
-#include <cpprl/model/policy.h>
+#include <cpprl/cpprl.h>
 
 #include "communicator.h"
 #include "requests.h"
