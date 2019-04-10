@@ -1,3 +1,4 @@
+#include <c10/util/ArrayRef.h>
 #include <torch/torch.h>
 
 #include "cpprl/distributions/categorical.h"
@@ -50,7 +51,7 @@ torch::Tensor Categorical::entropy()
     return -p_log_p.sum(-1);
 }
 
-std::vector<long> Categorical::extended_shape(torch::IntArrayRef sample_shape)
+std::vector<long> Categorical::extended_shape(c10::ArrayRef<int64_t> sample_shape)
 {
     std::vector<long> output_shape;
     output_shape.insert(output_shape.end(),
@@ -74,7 +75,7 @@ torch::Tensor Categorical::log_prob(torch::Tensor value)
     return broadcasted_tensors[1].gather(-1, value).squeeze(-1);
 }
 
-torch::Tensor Categorical::sample(torch::IntArrayRef sample_shape)
+torch::Tensor Categorical::sample(c10::ArrayRef<int64_t> sample_shape)
 {
     auto ext_sample_shape = extended_shape(sample_shape);
     auto param_shape = ext_sample_shape;
@@ -110,8 +111,8 @@ TEST_CASE("Categorical")
         auto output = dist.sample({100});
         auto more_than_4 = output > 4;
         auto less_than_0 = output < 0;
-        CHECK(!more_than_4.any().item().toBool());
-        CHECK(!less_than_0.any().item().toBool());
+        CHECK(!more_than_4.any().item().toInt());
+        CHECK(!less_than_0.any().item().toInt());
     }
 
     SUBCASE("Sampled tensors are of the right shape")

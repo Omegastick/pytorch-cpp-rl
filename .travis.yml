@@ -26,7 +26,7 @@ script:
   - gcc -v && g++ -v && cmake --version
   # Build
   - mkdir build && cd build
-  - /usr/local/bin/cmake -DCMAKE_PREFIX_PATH=/tmp/libtorch/ ..
+  - /usr/local/bin/cmake -DCMAKE_PREFIX_PATH=/tmp/libtorch ..
   - make -j2
   # Run tests
   - ./cpprl_tests
