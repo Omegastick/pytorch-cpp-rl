@@ -11,7 +11,7 @@ set(CMAKE_CXX_STANDARD 17)
 # Cppcheck
 list(APPEND CPPCHECK_ARGS
     --enable=warning
-    --std=c++11
+    --std=c++14
     --verbose
     --force
     --quiet

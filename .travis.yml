@@ -11,7 +11,6 @@ addons:
     packages:
       - gcc-8
       - g++-8
-      - cppcheck
 before_install:
   # Load git submodules
   - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
@@ -22,6 +21,9 @@ before_install:
   # Install libtorch
   - wget https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-latest.zip -O /tmp/libtorch.zip
   - unzip /tmp/libtorch.zip -d /tmp/
+  # Install cppcheck
+  - git clone https://github.com/danmar/cppcheck /tmp/cppcheck
+  - mkdir -p /tmp/cppcheck/build && cd /tmp/cppcheck/build && cmake .. && make -j2 && sudo make install
 script:
   # Print compiler versions
   - gcc -v && g++ -v && cmake --version
