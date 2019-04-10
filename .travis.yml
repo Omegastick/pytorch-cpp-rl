@@ -11,6 +11,7 @@ addons:
     packages:
       - gcc-8
       - g++-8
+      - libzmqpp-dev
 before_install:
   # Load git submodules
   - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
