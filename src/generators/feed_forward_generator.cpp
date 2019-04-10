@@ -55,6 +55,7 @@ MiniBatch FeedForwardGenerator::next()
     int timesteps = observations.size(0) - 1;
 
     auto observations_shape = observations.sizes().vec();
+    observations_shape.erase(observations_shape.begin());
     observations_shape[0] = -1;
     mini_batch.observations = observations.narrow(0, 0, timesteps)
                                   .view(observations_shape)
@@ -84,10 +85,10 @@ MiniBatch FeedForwardGenerator::next()
 
 TEST_CASE("FeedForwardGenerator")
 {
-    FeedForwardGenerator generator(5, torch::rand({16, 4}), torch::rand({16, 3}),
-                                   torch::rand({15, 1}), torch::rand({16, 1}),
-                                   torch::rand({16, 1}), torch::ones({16, 1}),
-                                   torch::rand({15, 1}), torch::rand({15, 1}));
+    FeedForwardGenerator generator(5, torch::rand({6, 3, 4}), torch::rand({6, 3, 3}),
+                                   torch::rand({5, 3, 1}), torch::rand({6, 3, 1}),
+                                   torch::rand({6, 3, 1}), torch::ones({6, 3, 1}),
+                                   torch::rand({5, 3, 1}), torch::rand({5, 3, 1}));
 
     SUBCASE("Minibatch tensors are correct sizes")
     {

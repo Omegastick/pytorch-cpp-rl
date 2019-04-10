@@ -8,7 +8,9 @@
 
 #include <cpprl/spaces.h>
 #include <cpprl/storage.h>
+#include <cpprl/algorithms/algorithm.h>
 #include <cpprl/algorithms/a2c.h>
+#include <cpprl/algorithms/ppo.h>
 #include <cpprl/model/mlp_base.h>
 #include <cpprl/model/cnn_base.h>
 #include <cpprl/model/policy.h>
@@ -20,10 +22,14 @@ using namespace gym_client;
 using namespace cpprl;
 
 // Algorithm hyperparameters
-const int batch_size = 5;
+const std::string algorithm = "PPO";
+const int batch_size = 40;
+const float clip_param = 0.2;
 const float discount_factor = 0.99;
 const float entropy_coef = 1e-3;
 const float learning_rate = 1e-3;
+const int num_epoch = 3;
+const int num_mini_batch = 20;
 const int reward_average_window_size = 10;
 const bool use_gae = true;
 const float value_loss_coef = 0.5;
@@ -122,7 +128,15 @@ int main(int argc, char *argv[])
     Policy policy(space, base);
     policy->to(device);
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
-    A2C a2c(policy, value_loss_coef, entropy_coef, learning_rate);
+    std::unique_ptr<Algorithm> algo;
+    if (algorithm == "A2C")
+    {
+        algo = std::make_unique<A2C>(policy, value_loss_coef, entropy_coef, learning_rate);
+    }
+    else if (algorithm == "PPO")
+    {
+        algo = std::make_unique<PPO>(policy, clip_param, num_epoch, num_mini_batch, value_loss_coef, entropy_coef, learning_rate);
+    }
 
     storage.set_first_observation(observation);
 
@@ -266,7 +280,7 @@ int main(int argc, char *argv[])
         }
         storage.compute_returns(next_value, use_gae, discount_factor, 0.9);
 
-        auto update_data = a2c.update(storage);
+        auto update_data = algo->update(storage);
         storage.after_update();
 
         if (update % 10 == 0)
