@@ -14,7 +14,7 @@ Communicator::Communicator(const std::string &url)
     context = std::make_unique<zmq::context_t>(1);
     socket = std::make_unique<zmq::socket_t>(*context, ZMQ_PAIR);
 
-    socket->connect(url);
+    socket->connect(url.c_str());
     spdlog::info(get_raw_response());
 }
 

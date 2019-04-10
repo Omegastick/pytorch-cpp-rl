@@ -1,6 +1,7 @@
 #include <memory>
 #include <vector>
 
+#include <c10/util/ArrayRef.h>
 #include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
@@ -13,7 +14,7 @@ namespace cpprl
 {
 RolloutStorage::RolloutStorage(unsigned int num_steps,
                                unsigned int num_processes,
-                               torch::IntArrayRef obs_shape,
+                               c10::ArrayRef<int64_t> obs_shape,
                                ActionSpace action_space,
                                unsigned int hidden_state_size,
                                torch::Device device)

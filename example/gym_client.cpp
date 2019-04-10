@@ -4,7 +4,6 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
-#include <nlohmann/json.hpp>
 
 #include <cpprl/cpprl.h>
 
