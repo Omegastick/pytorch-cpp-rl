@@ -135,6 +135,7 @@ int main(int argc, char *argv[])
 
     std::vector<float> running_rewards(num_envs);
     int episode_count = 0;
+    bool render = false;
     std::vector<float> reward_history(reward_average_window_size);
 
     auto start_time = std::chrono::high_resolution_clock::now();
@@ -160,7 +161,7 @@ int main(int argc, char *argv[])
 
             auto step_param = std::make_shared<StepParam>();
             step_param->actions = actions;
-            step_param->render = false;
+            step_param->render = render;
             Request<StepParam> step_request("step", step_param);
             communicator.send_request(step_request);
             std::vector<float> rewards;
@@ -240,6 +241,7 @@ int main(int argc, char *argv[])
             float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
             average_reward /= episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
             spdlog::info("Reward: {}", average_reward);
+            render = average_reward > 180;
         }
     }
 }
