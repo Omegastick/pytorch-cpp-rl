@@ -133,65 +133,12 @@ int main(int argc, char *argv[])
 
     storage.set_first_observation(observation);
 
-    // std::ifstream weights_file{"/home/px046/prog/pytorch-cpp-rl/build/weights.json"};
-    // auto json = nlohmann::json::parse(weights_file);
-    // for (const auto &parameter : json.items())
-    // {
-    //     if (base->named_parameters().contains(parameter.key()))
-    //     {
-    //         std::vector<int64_t> tensor_size = parameter.value()[0];
-    //         std::vector<float> parameter_vec;
-    //         if (parameter.key().find("bias") == std::string::npos)
-    //         {
-    //             std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
-    //             parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
-    //         }
-    //         else
-    //         {
-    //             parameter_vec = parameter.value()[1].get<std::vector<float>>();
-    //         }
-    //         NoGradGuard guard;
-    //         auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size).contiguous();
-    //         base->named_parameters()[parameter.key()].copy_(json_weights);
-    //         spdlog::info("Wrote {}", parameter.key());
-    //         if (parameter.key().find("bias") == std::string::npos)
-    //         {
-    //             spdlog::info("Json: {} - Memory: {}", parameter.value()[1][0][0], base->named_parameters()[parameter.key()][0][0].item().toFloat());
-    //         }
-    //     }
-    //     else if (policy->named_modules()["output"]->named_parameters().contains(parameter.key()))
-    //     {
-    //         std::vector<int64_t> tensor_size = parameter.value()[0];
-    //         std::vector<float> parameter_vec;
-    //         if (parameter.key().find("bias") == std::string::npos)
-    //         {
-    //             std::vector<std::vector<float>> parameter_2d_vec = parameter.value()[1].get<std::vector<std::vector<float>>>();
-    //             parameter_vec = flatten_2d_vector<float>(parameter_2d_vec);
-    //         }
-    //         else
-    //         {
-    //             parameter_vec = parameter.value()[1].get<std::vector<float>>();
-    //         }
-    //         NoGradGuard guard;
-    //         auto json_weights = torch::from_blob(parameter_vec.data(), tensor_size).contiguous();
-    //         policy->named_modules()["output"]->named_parameters()[parameter.key()].copy_(json_weights);
-    //         spdlog::info("Wrote {}", parameter.key());
-    //         if (parameter.key().find("bias") == std::string::npos)
-    //         {
-    //             spdlog::info("Json: {} - Memory: {}",
-    //                          parameter.value()[1][0][0],
-    //                          policy->named_modules()["output"]->named_parameters()[parameter.key()][0][0].item().toFloat());
-    //         }
-    //     }
-    // }
-
     std::vector<float> running_rewards(num_envs);
     int episode_count = 0;
     std::vector<float> reward_history(reward_average_window_size);
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    torch::manual_seed(0);
     for (int update = 0; update < 100000; ++update)
     {
         for (int step = 0; step < batch_size; ++step)
@@ -276,7 +223,7 @@ int main(int argc, char *argv[])
         auto update_data = algo->update(storage);
         storage.after_update();
 
-        if (update % 10 == 0)
+        if (update % 10 == 0 && update > 0)
         {
             auto total_steps = (update + 1) * batch_size * num_envs;
             auto run_time = std::chrono::high_resolution_clock::now() - start_time;
@@ -284,6 +231,7 @@ int main(int argc, char *argv[])
             auto fps = total_steps / (run_time_secs.count() + 1e-9);
             spdlog::info("---");
             spdlog::info("Update: {}", update);
+            spdlog::info("Total frames: {}", total_steps);
             spdlog::info("FPS: {}", fps);
             for (const auto &datum : update_data)
             {
