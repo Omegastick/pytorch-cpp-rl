@@ -1,6 +1,8 @@
 dist: trusty
 language: c++
 compiler: gcc
+git:
+  submodules: false
 addons:
   apt:
     sources:
@@ -8,7 +10,11 @@ addons:
     packages:
       - gcc-8
       - g++-8
+      - cppcheck
 before_install:
+  # Load git submodules
+  - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+  - git submodule update --init --recursive
   # Install Cmake >= 3.10.0
   - wget -O cmake.sh https://cmake.org/files/v3.10/cmake-3.10.0-rc1-Linux-x86_64.sh
   - sudo sh cmake.sh --skip-license --exclude-subdir --prefix=/usr/local
@@ -21,4 +27,8 @@ script:
   # Build
   - mkdir build && cd build
   - /usr/local/bin/cmake -DCMAKE_PREFIX_PATH=/tmp/libtorch/ ..
-  - make
+  - make -j2
+  # Run tests
+  - ./cpprl_tests
+  # Cppcheck
+  - make check
