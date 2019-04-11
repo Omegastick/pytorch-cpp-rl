@@ -1,7 +1,9 @@
 # CppRl - PyTorch C++ Reinforcement Learning
 ![](https://travis-ci.org/Omegastick/pytorch-cpp-rl.svg?branch=master)
+![LunarLander-v2](imgs/lunar_lander.gif)
+Above: results on LunarLander-v2 after 60 seconds of training on my laptop
 
-CppRl is a reinforcement learning framework, written using the [PyTorch C++ frontend](https://pytorch.org/cppdocs/frontend.html).
+**CppRl is a reinforcement learning framework, written using the [PyTorch C++ frontend](https://pytorch.org/cppdocs/frontend.html).**
 
 It is *very* heavily based on [Ikostrikov's wonderful pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail). You could even consider this a port. The API and underlying algorithms are almost identical (with the necessary changes involved in the move to C++).
 
