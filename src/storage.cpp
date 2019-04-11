@@ -133,6 +133,12 @@ void RolloutStorage::insert(torch::Tensor observation,
     step = (step + 1) % num_steps;
 }
 
+std::unique_ptr<Generator> RolloutStorage::recurrent_generator(
+    torch::Tensor /*advantages*/, int /*num_mini_batch*/)
+{
+    return std::unique_ptr<Generator>();
+}
+
 void RolloutStorage::set_first_observation(torch::Tensor observation)
 {
     observations[0].copy_(observation);
@@ -401,6 +407,20 @@ TEST_CASE("RolloutStorage")
              << storage.get_masks() << "\n");
         CHECK(storage.get_masks()[0][0][0].item().toDouble() ==
               doctest::Approx(0));
+    }
+
+    SUBCASE("Can create feed-forward generator")
+    {
+        RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
+        auto generator = storage.feed_forward_generator(torch::rand({3, 5, 1}), 5);
+        generator->next();
+    }
+
+    SUBCASE("Can create recurrent generator")
+    {
+        RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
+        auto generator = storage.recurrent_generator(torch::rand({3, 5, 1}), 5);
+        generator->next();
     }
 }
 }
