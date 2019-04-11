@@ -59,8 +59,8 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts)
         std::unique_ptr<Generator> data_generator;
         if (policy->is_recurrent())
         {
-            spdlog::error("Recurrent policies are not implemented yet for PPO");
-            throw std::exception();
+            data_generator = rollouts.recurrent_generator(advantages,
+                                                          num_mini_batch);
         }
         else
         {

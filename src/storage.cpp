@@ -6,6 +6,7 @@
 #include <torch/torch.h>
 
 #include "cpprl/generators/feed_forward_generator.h"
+#include "cpprl/generators/recurrent_generator.h"
 #include "cpprl/storage.h"
 #include "cpprl/spaces.h"
 #include "third_party/doctest.h"
@@ -98,7 +99,10 @@ std::unique_ptr<Generator> RolloutStorage::feed_forward_generator(
     {
         spdlog::error("PPO needs the number of processes ({}) * the number of "
                       "steps ({}) = {} to be greater than or equal to the number "
-                      "of minibatches");
+                      "of minibatches ({})",
+                      num_processes,
+                      num_steps,
+                      num_mini_batch);
         throw std::exception();
     }
     auto mini_batch_size = batch_size / num_mini_batch;
@@ -131,6 +135,31 @@ void RolloutStorage::insert(torch::Tensor observation,
     masks[step + 1].copy_(mask);
 
     step = (step + 1) % num_steps;
+}
+
+std::unique_ptr<Generator> RolloutStorage::recurrent_generator(
+    torch::Tensor advantages, int num_mini_batch)
+{
+    auto num_processes = actions.size(1);
+    if (num_processes < num_mini_batch)
+    {
+        spdlog::error("PPO needs the number of processes ({}) to be greater than or"
+                      " equal to the number of minibatches ({})",
+                      num_processes,
+                      num_mini_batch);
+        throw std::exception();
+    }
+    return std::make_unique<RecurrentGenerator>(
+        num_processes,
+        num_mini_batch,
+        observations,
+        hidden_states,
+        actions,
+        value_predictions,
+        returns,
+        masks,
+        action_log_probs,
+        advantages);
 }
 
 void RolloutStorage::set_first_observation(torch::Tensor observation)
@@ -401,6 +430,20 @@ TEST_CASE("RolloutStorage")
              << storage.get_masks() << "\n");
         CHECK(storage.get_masks()[0][0][0].item().toDouble() ==
               doctest::Approx(0));
+    }
+
+    SUBCASE("Can create feed-forward generator")
+    {
+        RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
+        auto generator = storage.feed_forward_generator(torch::rand({3, 5, 1}), 5);
+        generator->next();
+    }
+
+    SUBCASE("Can create recurrent generator")
+    {
+        RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
+        auto generator = storage.recurrent_generator(torch::rand({3, 5, 1}), 5);
+        generator->next();
     }
 }
 }
