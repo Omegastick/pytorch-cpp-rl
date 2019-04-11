@@ -67,7 +67,7 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor x,
 
         // Figure out which steps in the sequence have a zero for any agent
         // We assume the first timestep has a zero in it
-        auto has_zeros = (masks.index({torch::arange(1, masks.size(0), TensorOptions(ScalarType::Long))}) == 0)
+        auto has_zeros = (masks.narrow(0, 1, masks.size(0) - 1) == 0)
                              .any(-1)
                              .nonzero()
                              .squeeze();
@@ -77,10 +77,10 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor x,
 
         // Add t=0 and t=timesteps to the list
         // has_zeros = [0] + has_zeros + [timesteps]
-        has_zeros = has_zeros.contiguous().to(ScalarType::Float);
-        std::vector<float> has_zeros_vec(
-            has_zeros.data<float>(),
-            has_zeros.data<float>() + has_zeros.numel());
+        has_zeros = has_zeros.contiguous().to(torch::kInt);
+        std::vector<int> has_zeros_vec(
+            has_zeros.data<int>(),
+            has_zeros.data<int>() + has_zeros.numel());
         has_zeros_vec.insert(has_zeros_vec.begin(), {0});
         has_zeros_vec.push_back(timesteps);
 
@@ -88,9 +88,8 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor x,
         std::vector<torch::Tensor> outputs;
         for (unsigned int i = 0; i < has_zeros_vec.size() - 1; ++i)
         {
-            // We can now process steps that don't have any zeros in the masks
-            // together.
-            // Apparently this is much faster?
+            // We can now process long runs of timesteps without dones in them in
+            // one go
             auto start_idx = has_zeros_vec[i];
             auto end_idx = has_zeros_vec[i + 1];
 
@@ -104,7 +103,8 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor x,
         }
 
         // x is a (timesteps, agents, -1) tensor
-        x = torch::cat(outputs, 1).squeeze(0);
+        x = torch::cat(outputs, 0).squeeze(0);
+        x = x.view({timesteps * agents, -1});
         rnn_hxs = rnn_hxs.squeeze(0);
 
         return {x, rnn_hxs};
