@@ -16,6 +16,7 @@ At the time of writing, there are no general-use reinforcement learning framewor
 - Implemented algorithms:
   - A2C
   - PPO
+- Recurrent policies (GRU based)
 - Cross-platform compatibility (tested on Windows 10, Ubuntu 16.04, and Ubuntu 18.04)
 - Solid test coverage
 - Decently optimized (always open to pull requests improving optimization though)
