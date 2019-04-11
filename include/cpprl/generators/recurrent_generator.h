@@ -11,10 +11,11 @@ class RecurrentGenerator : public Generator
   private:
     torch::Tensor observations, hidden_states, actions, value_predictions,
         returns, masks, action_log_probs, advantages, indices;
-    int index;
+    int index, num_envs_per_batch;
 
   public:
-    RecurrentGenerator(int mini_batch_size,
+    RecurrentGenerator(int num_processes,
+                       int num_mini_batch,
                        torch::Tensor observations,
                        torch::Tensor hidden_states,
                        torch::Tensor actions,
