@@ -5,7 +5,7 @@ CppRl is a reinforcement learning framework, written using the [PyTorch C++ fron
 
 It is *very* heavily based on [Ikostrikov's wonderful pytorch-a2c-ppo-acktr-gail](https://github.com/ikostrikov/pytorch-a2c-ppo-acktr-gail). You could even consider this a port. The API and underlying algorithms are almost identical (with the necessary changes involved in the move to C++).
 
-It also contains a reimplmentation simple OpenAI Gym server that communicates via [ZeroMQ](http://zeromq.org/) to test the framework on Gym environments.
+It also contains an implementation of a simple OpenAI Gym server that communicates via [ZeroMQ](http://zeromq.org/) to test the framework on Gym environments.
 
 CppRl aims to be an extensible, reasonably optimized, production-ready framework for using reinforcement learning in projects where Python isn't viable. It should be ready to use in desktop applications on user's computers with minimal setup required on the user's side.
 
