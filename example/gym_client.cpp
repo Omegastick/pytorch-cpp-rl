@@ -33,6 +33,7 @@ const float env_gamma = discount_factor; // Set to -1 to disable
 
 // Model hyperparameters
 const int hidden_size = 64;
+const bool recurrent = false;
 const bool use_cuda = false;
 
 std::vector<float> flatten_vector(std::vector<float> const &input)
@@ -109,11 +110,11 @@ int main(int argc, char *argv[])
     std::shared_ptr<NNBase> base;
     if (env_info->observation_space_shape.size() == 1)
     {
-        base = std::make_shared<MlpBase>(env_info->observation_space_shape[0], false, hidden_size);
+        base = std::make_shared<MlpBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
     }
     else
     {
-        base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], false, hidden_size);
+        base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
     }
     base->to(device);
     ActionSpace space{"Discrete", env_info->action_space_shape};
@@ -146,9 +147,9 @@ int main(int argc, char *argv[])
             std::vector<torch::Tensor> act_result;
             {
                 torch::NoGradGuard no_grad;
-                act_result = policy->act(observation,
-                                         torch::Tensor(),
-                                         torch::ones({num_envs, 1}));
+                act_result = policy->act(storage.get_observations()[step],
+                                         storage.get_hidden_states()[step],
+                                         storage.get_masks()[step]);
             }
             auto actions_tensor = act_result[1].cpu();
             long *actions_array = actions_tensor.data<long>();
@@ -201,7 +202,7 @@ int main(int argc, char *argv[])
             }
 
             storage.insert(observation,
-                           torch::zeros({num_envs, hidden_size}, TensorOptions(device)),
+                           act_result[3],
                            act_result[1],
                            act_result[2],
                            act_result[0],

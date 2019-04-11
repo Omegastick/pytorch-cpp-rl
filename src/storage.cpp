@@ -6,6 +6,7 @@
 #include <torch/torch.h>
 
 #include "cpprl/generators/feed_forward_generator.h"
+#include "cpprl/generators/recurrent_generator.h"
 #include "cpprl/storage.h"
 #include "cpprl/spaces.h"
 #include "third_party/doctest.h"
@@ -98,7 +99,10 @@ std::unique_ptr<Generator> RolloutStorage::feed_forward_generator(
     {
         spdlog::error("PPO needs the number of processes ({}) * the number of "
                       "steps ({}) = {} to be greater than or equal to the number "
-                      "of minibatches");
+                      "of minibatches ({})",
+                      num_processes,
+                      num_steps,
+                      num_mini_batch);
         throw std::exception();
     }
     auto mini_batch_size = batch_size / num_mini_batch;
@@ -134,9 +138,28 @@ void RolloutStorage::insert(torch::Tensor observation,
 }
 
 std::unique_ptr<Generator> RolloutStorage::recurrent_generator(
-    torch::Tensor /*advantages*/, int /*num_mini_batch*/)
+    torch::Tensor advantages, int num_mini_batch)
 {
-    return std::unique_ptr<Generator>();
+    auto num_processes = actions.size(1);
+    if (num_processes < num_mini_batch)
+    {
+        spdlog::error("PPO needs the number of processes ({}) to be greater than or"
+                      " equal to the number of minibatches ({})",
+                      num_processes,
+                      num_mini_batch);
+        throw std::exception();
+    }
+    return std::make_unique<RecurrentGenerator>(
+        num_processes,
+        num_mini_batch,
+        observations,
+        hidden_states,
+        actions,
+        value_predictions,
+        returns,
+        masks,
+        action_log_probs,
+        advantages);
 }
 
 void RolloutStorage::set_first_observation(torch::Tensor observation)
