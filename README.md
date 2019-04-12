@@ -42,13 +42,17 @@ Note: The Gym server and client aren't very well optimized, especially when it c
 
 ## Building
 CMake is used for the build system. 
-The only required library not included as a submodule is Libtorch. That has to be [installed seperately](https://pytorch.org/cppdocs/installing.html).
+Most dependencies are included as submodules (run `git submodule update --init --recursive` to get them).
+Libtorch has to be [installed seperately](https://pytorch.org/cppdocs/installing.html).
+The OpenAI Gym client also uses [Zmpqpp](https://github.com/zeromq/zmqpp), which can be installed with `sudo apt-get install libzmqpp-dev`.
 ```bash
 cd pytorch-cpp-rl
 mkdir build && cd build
 cmake ..
 make -j4
 ```
+
+Windows build instructions coming soon.
 
 ## Testing
 You can run the tests with `build/cpprl_tests`.
