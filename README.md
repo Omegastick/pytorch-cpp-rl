@@ -44,7 +44,8 @@ Note: The Gym server and client aren't very well optimized, especially when it c
 CMake is used for the build system. 
 Most dependencies are included as submodules (run `git submodule update --init --recursive` to get them).
 Libtorch has to be [installed seperately](https://pytorch.org/cppdocs/installing.html).
-The OpenAI Gym client also uses [Zmpqpp](https://github.com/zeromq/zmqpp), which can be installed with `sudo apt-get install libzmqpp-dev`.
+
+### Linux
 ```bash
 cd pytorch-cpp-rl
 mkdir build && cd build
@@ -52,7 +53,16 @@ cmake ..
 make -j4
 ```
 
-Windows build instructions coming soon.
+### Windows
+```
+cd pytorch-cpp-rl
+mkdir build && cd build
+cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_PREFIX_PATH=C:/path/to/libtorch ..
+cmake --build . --config Release
+```
+Before running, make sure to add `libtorch/lib` to your `PATH` environment variable.
+
+Windows performance is about 75% that of Linux's at the moment. I'm looking into how to speed things up.
 
 ## Testing
-You can run the tests with `build/cpprl_tests`.
+You can run the tests with `build/cpprl_tests` (`build/Release/cpprl_tests.exe` on Windows).

@@ -59,7 +59,7 @@ MiniBatch RecurrentGenerator::next()
 
     // Fill minibatch with tensors of shape (timestep, process, *whatever)
     // Except hidden states, that is just (process, *whatever)
-    long env_index = indices[index].item().toLong();
+    int64_t env_index = indices[index].item().toLong();
     mini_batch.observations = observations
                                   .narrow(0, 0, observations.size(0) - 1)
                                   .narrow(1, env_index, num_envs_per_batch);
@@ -110,14 +110,14 @@ TEST_CASE("RecurrentGenerator")
     {
         auto minibatch = generator.next();
 
-        CHECK(minibatch.observations.sizes().vec() == std::vector<long>{5, 4});
-        CHECK(minibatch.hidden_states.sizes().vec() == std::vector<long>{1, 3});
-        CHECK(minibatch.actions.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.value_predictions.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.returns.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.masks.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.action_log_probs.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.advantages.sizes().vec() == std::vector<long>{5, 1});
+        CHECK(minibatch.observations.sizes().vec() == std::vector<int64_t>{5, 4});
+        CHECK(minibatch.hidden_states.sizes().vec() == std::vector<int64_t>{1, 3});
+        CHECK(minibatch.actions.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.value_predictions.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.returns.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.masks.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.action_log_probs.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.advantages.sizes().vec() == std::vector<int64_t>{5, 1});
     }
 
     SUBCASE("done() indicates whether the generator has finished")

@@ -54,7 +54,7 @@ endif(CPPRL_BUILD_TESTS)
 
 # Enable all warnings
 if(MSVC)
-    target_compile_options(cpprl PRIVATE /W4 /WX)
+    target_compile_options(cpprl PRIVATE /W0)
 else(MSVC)
     target_compile_options(cpprl PRIVATE -Wall -Wextra -pedantic)
 endif(MSVC)  
