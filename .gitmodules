@@ -6,4 +6,4 @@
 	url = git@github.com:msgpack/msgpack-c.git
 [submodule "example/lib/libzmq"]
 	path = example/lib/libzmq
-	url = git@github.com:zeromq/libzmq.git
+	url = git@github.com:Omegastick/libzmq.git
