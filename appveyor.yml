@@ -24,4 +24,5 @@ build_script:
 - cmake --build . --config Release
 
 test_script:
-- Release/cpprl_tests.exe
+- dir
+- Release\cpprl_tests.exe
