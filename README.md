@@ -1,5 +1,6 @@
 # CppRl - PyTorch C++ Reinforcement Learning
-![](https://travis-ci.org/Omegastick/pytorch-cpp-rl.svg?branch=master)
+![Linux build status](https://travis-ci.org/Omegastick/pytorch-cpp-rl.svg?branch=master) [![Windows build status](https://ci.appveyor.com/api/projects/status/ch64s3twohboxkqt?svg=true)](https://ci.appveyor.com/project/Omegastick/pytorch-cpp-rl)
+
 ![LunarLander-v2](imgs/lunar_lander.gif)
 Above: results on LunarLander-v2 after 60 seconds of training on my laptop
 
