@@ -1,0 +1,21 @@
+version: '1.0.0-{build}'
+
+clone_folder: C:\pytorch-cpp-rl
+
+image:
+- Visual Studio 2017
+
+platform:
+- x64
+
+before_build:
+- cmd: sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
+- cmd: git submodule update --init --recursive
+- cmd: curl -fsS -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-latest.zip
+- cmd: 7z x libtorch.zip -y -oC:\
+- cmd: mkdir build
+- cmd: cd build
+- cmd: cmake -G "Visual Studio 15 2017 Win64" -DCMAKE_PREFIX_PATH=C:\libtorch ..
+
+build_script:
+- cmd: cmake --build . --config Release
