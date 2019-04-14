@@ -94,14 +94,14 @@ TEST_CASE("FeedForwardGenerator")
     {
         auto minibatch = generator.next();
 
-        CHECK(minibatch.observations.sizes().vec() == std::vector<long>{5, 4});
-        CHECK(minibatch.hidden_states.sizes().vec() == std::vector<long>{5, 3});
-        CHECK(minibatch.actions.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.value_predictions.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.returns.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.masks.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.action_log_probs.sizes().vec() == std::vector<long>{5, 1});
-        CHECK(minibatch.advantages.sizes().vec() == std::vector<long>{5, 1});
+        CHECK(minibatch.observations.sizes().vec() == std::vector<int64_t>{5, 4});
+        CHECK(minibatch.hidden_states.sizes().vec() == std::vector<int64_t>{5, 3});
+        CHECK(minibatch.actions.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.value_predictions.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.returns.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.masks.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.action_log_probs.sizes().vec() == std::vector<int64_t>{5, 1});
+        CHECK(minibatch.advantages.sizes().vec() == std::vector<int64_t>{5, 1});
     }
 
     SUBCASE("done() indicates whether the generator has finished")

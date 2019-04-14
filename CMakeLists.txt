@@ -12,14 +12,15 @@ set(CMAKE_CXX_STANDARD 17)
 list(APPEND CPPCHECK_ARGS
     --enable=warning
     --std=c++14
-    --verbose
     --force
+    --verbose
     --quiet
     --inline-suppr
     --error-exitcode=1
     --language=c++
     --config-exclude=${CMAKE_CURRENT_LIST_DIR}/src/third_party
     --config-exclude=${CMAKE_CURRENT_LIST_DIR}/lib
+    -i${CMAKE_CURRENT_LIST_DIR}/example/lib
     --suppressions-list=${CMAKE_CURRENT_LIST_DIR}/CppCheckSuppressions.txt 
     -I ${CMAKE_CURRENT_LIST_DIR}/src 
     -I ${CMAKE_CURRENT_LIST_DIR}/include 
@@ -54,7 +55,7 @@ endif(CPPRL_BUILD_TESTS)
 
 # Enable all warnings
 if(MSVC)
-    target_compile_options(cpprl PRIVATE /W4 /WX)
+    target_compile_options(cpprl PRIVATE /W0)
 else(MSVC)
     target_compile_options(cpprl PRIVATE -Wall -Wextra -pedantic)
 endif(MSVC)  

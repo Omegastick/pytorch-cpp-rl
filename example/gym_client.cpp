@@ -152,7 +152,7 @@ int main(int argc, char *argv[])
                                          storage.get_masks()[step]);
             }
             auto actions_tensor = act_result[1].cpu();
-            long *actions_array = actions_tensor.data<long>();
+            int64_t *actions_array = actions_tensor.data<int64_t>();
             std::vector<std::vector<int>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i)
             {

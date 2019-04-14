@@ -13,15 +13,15 @@
 
 namespace cpprl
 {
-RolloutStorage::RolloutStorage(unsigned int num_steps,
-                               unsigned int num_processes,
+RolloutStorage::RolloutStorage(int64_t num_steps,
+                               int64_t num_processes,
                                c10::ArrayRef<int64_t> obs_shape,
                                ActionSpace action_space,
-                               unsigned int hidden_state_size,
+                               int64_t hidden_state_size,
                                torch::Device device)
     : device(device), num_steps(num_steps), step(0)
 {
-    std::vector<long> observations_shape{num_steps + 1, num_processes};
+    std::vector<int64_t> observations_shape{num_steps + 1, num_processes};
     observations_shape.insert(observations_shape.end(), obs_shape.begin(),
                               obs_shape.end());
     observations = torch::zeros(observations_shape, torch::TensorOptions(device));
@@ -223,7 +223,7 @@ TEST_CASE("RolloutStorage")
 
     SUBCASE("Initializes actions to correct type")
     {
-        SUBCASE("Long")
+        SUBCASE("int64_t")
         {
             RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
 

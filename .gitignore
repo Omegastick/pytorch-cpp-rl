@@ -1,3 +1,5 @@
 build/
 .vscode/
+.vs/
+.pytest_cache/
 *.pyc
