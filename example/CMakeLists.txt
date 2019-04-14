@@ -6,7 +6,7 @@ set(MSGPACK_DIR ${LIB_DIR}/msgpack-c)
 set(ZMQ_DIR ${LIB_DIR}/libzmq)
 
 # ZMQ
-set(ZMQ_BUILD_TESTS OFF)
+option(ZMQ_BUILD_TESTS "" OFF)
 add_subdirectory(${ZMQ_DIR})
 
 target_include_directories(gym_client 
