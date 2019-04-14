@@ -9,6 +9,6 @@ namespace cpprl
 struct ActionSpace
 {
     std::string type;
-    std::vector<long> shape;
+    std::vector<int64_t> shape;
 };
 }

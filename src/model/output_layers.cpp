@@ -41,7 +41,7 @@ TEST_CASE("CategoricalOutput")
 
         auto output = dist->sample();
 
-        CHECK(output.sizes().vec() == std::vector<long>{2});
+        CHECK(output.sizes().vec() == std::vector<int64_t>{2});
     }
 }
 }

@@ -96,7 +96,7 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor x,
             auto gru_output = gru(
                 x.index({torch::arange(start_idx,
                                        end_idx,
-                                       TensorOptions(ScalarType::Long))}),
+                                       TensorOptions(torch::kLong))}),
                 rnn_hxs * masks[start_idx].view({1, -1, 1}));
 
             outputs.push_back(gru_output.output);

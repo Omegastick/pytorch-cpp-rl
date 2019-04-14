@@ -46,9 +46,9 @@ struct StepParam
 struct InfoResponse
 {
     std::string action_space_type;
-    std::vector<long> action_space_shape;
+    std::vector<int64_t> action_space_shape;
     std::string observation_space_type;
-    std::vector<long> observation_space_shape;
+    std::vector<int64_t> observation_space_shape;
     MSGPACK_DEFINE_MAP(action_space_type, action_space_shape,
                        observation_space_type, observation_space_shape);
 };

@@ -51,9 +51,9 @@ torch::Tensor Categorical::entropy()
     return -p_log_p.sum(-1);
 }
 
-std::vector<long> Categorical::extended_shape(c10::ArrayRef<int64_t> sample_shape)
+std::vector<int64_t> Categorical::extended_shape(c10::ArrayRef<int64_t> sample_shape)
 {
-    std::vector<long> output_shape;
+    std::vector<int64_t> output_shape;
     output_shape.insert(output_shape.end(),
                         sample_shape.begin(),
                         sample_shape.end());
@@ -68,7 +68,7 @@ std::vector<long> Categorical::extended_shape(c10::ArrayRef<int64_t> sample_shap
 
 torch::Tensor Categorical::log_prob(torch::Tensor value)
 {
-    value = value.to(torch::ScalarType::Long).unsqueeze(-1);
+    value = value.to(torch::kLong).unsqueeze(-1);
     auto broadcasted_tensors = torch::broadcast_tensors({value, logits});
     value = broadcasted_tensors[0];
     value = value.narrow(-1, 0, 1);
@@ -82,7 +82,7 @@ torch::Tensor Categorical::sample(c10::ArrayRef<int64_t> sample_shape)
     param_shape.insert(param_shape.end(), {num_events});
     auto exp_probs = probs.expand(param_shape);
     torch::Tensor probs_2d;
-    if (probs.dim() == 1 or probs.size(0) == 1)
+    if (probs.dim() == 1 || probs.size(0) == 1)
     {
         probs_2d = exp_probs.view({-1, num_events});
     }
@@ -121,9 +121,9 @@ TEST_CASE("Categorical")
         auto probabilities_tensor = torch::from_blob(probabilities, {5});
         auto dist = Categorical(&probabilities_tensor, nullptr);
 
-        CHECK(dist.sample({20}).sizes().vec() == std::vector<long>{20});
-        CHECK(dist.sample({2, 20}).sizes().vec() == std::vector<long>{2, 20});
-        CHECK(dist.sample({1, 2, 3, 4, 5}).sizes().vec() == std::vector<long>{1, 2, 3, 4, 5});
+        CHECK(dist.sample({20}).sizes().vec() == std::vector<int64_t>{20});
+        CHECK(dist.sample({2, 20}).sizes().vec() == std::vector<int64_t>{2, 20});
+        CHECK(dist.sample({1, 2, 3, 4, 5}).sizes().vec() == std::vector<int64_t>{1, 2, 3, 4, 5});
     }
 
     SUBCASE("Multi-dimensional input probabilities are handled correctly")
@@ -135,8 +135,8 @@ TEST_CASE("Categorical")
             auto probabilities_tensor = torch::from_blob(probabilities, {2, 4});
             auto dist = Categorical(&probabilities_tensor, nullptr);
 
-            CHECK(dist.sample({20}).sizes().vec() == std::vector<long>{20, 2});
-            CHECK(dist.sample({10, 5}).sizes().vec() == std::vector<long>{10, 5, 2});
+            CHECK(dist.sample({20}).sizes().vec() == std::vector<int64_t>{20, 2});
+            CHECK(dist.sample({10, 5}).sizes().vec() == std::vector<int64_t>{10, 5, 2});
         }
 
         SUBCASE("Generated tensors have correct probabilities")
@@ -174,7 +174,7 @@ TEST_CASE("Categorical")
 
         SUBCASE("Output tensor is the correct size")
         {
-            CHECK(entropies.sizes().vec() == std::vector<long>{2});
+            CHECK(entropies.sizes().vec() == std::vector<int64_t>{2});
         }
     }
 
@@ -205,7 +205,7 @@ TEST_CASE("Categorical")
 
         SUBCASE("Output tensor is correct size")
         {
-            CHECK(log_probs.sizes().vec() == std::vector<long>{2, 2});
+            CHECK(log_probs.sizes().vec() == std::vector<int64_t>{2, 2});
         }
     }
 }

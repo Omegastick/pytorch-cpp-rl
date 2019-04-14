@@ -1,11 +1,11 @@
 #include <memory>
 #include <string>
 
-#include <zmq.hpp>
 #include <spdlog/spdlog.h>
 
 #include "communicator.h"
 #include "requests.h"
+#include "third_party/zmq.hpp"
 
 namespace gym_client
 {

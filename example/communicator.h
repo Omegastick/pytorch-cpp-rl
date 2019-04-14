@@ -6,11 +6,11 @@
 #include <string>
 
 #include <msgpack.hpp>
-#include <zmq.hpp>
 #include <spdlog/spdlog.h>
 #include <spdlog/fmt/bundled/ostream.h>
 
 #include "requests.h"
+#include "third_party/zmq.hpp"
 
 namespace gym_client
 {
