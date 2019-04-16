@@ -4,6 +4,7 @@
 #include "cpprl/model/mlp_base.h"
 #include "cpprl/model/output_layers.h"
 #include "cpprl/spaces.h"
+#include "cpprl/distributions/categorical.h"
 #include "third_party/doctest.h"
 
 using namespace torch;
@@ -81,7 +82,7 @@ torch::Tensor PolicyImpl::get_probs(torch::Tensor inputs,
     auto base_output = base->forward(inputs, rnn_hxs, masks);
     auto dist = output_layer->forward(base_output[1]);
 
-    return dist->get_probs();
+    return static_cast<Categorical *>(dist.get())->get_probs();
 }
 
 torch::Tensor PolicyImpl::get_values(torch::Tensor inputs,
