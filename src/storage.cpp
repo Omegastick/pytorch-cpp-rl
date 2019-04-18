@@ -223,7 +223,7 @@ TEST_CASE("RolloutStorage")
 
     SUBCASE("Initializes actions to correct type")
     {
-        SUBCASE("int64_t")
+        SUBCASE("Long")
         {
             RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
 

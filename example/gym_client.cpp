@@ -15,21 +15,24 @@ using namespace cpprl;
 
 // Algorithm hyperparameters
 const std::string algorithm = "PPO";
-const int batch_size = 40;
+const int batch_size = 512;
 const float clip_param = 0.2;
 const float discount_factor = 0.99;
-const float entropy_coef = 1e-3;
-const float learning_rate = 1e-3;
+const float entropy_coef = 1e-5;
+const float gae = 0.95;
+const float learning_rate = 3e-4;
+const int log_interval = 1;
 const int num_epoch = 3;
-const int num_mini_batch = 20;
+const int num_mini_batch = 32;
 const int reward_average_window_size = 10;
 const bool use_gae = true;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
-const std::string env_name = "LunarLander-v2";
-const int num_envs = 8;
 const float env_gamma = discount_factor; // Set to -1 to disable
+const std::string env_name = "BipedalWalker-v2";
+const int num_envs = 8;
+const float render_reward_threshold = 300;
 
 // Model hyperparameters
 const int hidden_size = 64;
@@ -117,7 +120,7 @@ int main(int argc, char *argv[])
         base = std::make_shared<CnnBase>(env_info->observation_space_shape[0], recurrent, hidden_size);
     }
     base->to(device);
-    ActionSpace space{"Discrete", env_info->action_space_shape};
+    ActionSpace space{env_info->action_space_type, env_info->action_space_shape};
     Policy policy(space, base);
     policy->to(device);
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
@@ -152,11 +155,14 @@ int main(int argc, char *argv[])
                                          storage.get_masks()[step]);
             }
             auto actions_tensor = act_result[1].cpu();
-            int64_t *actions_array = actions_tensor.data<int64_t>();
-            std::vector<std::vector<int>> actions(num_envs);
+            float *actions_array = actions_tensor.data<float>();
+            std::vector<std::vector<float>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i)
             {
-                actions[i] = {static_cast<int>(actions_array[i])};
+                for (int j = 0; j < env_info->action_space_shape[0]; j++)
+                {
+                    actions[i].push_back(actions_array[i * env_info->action_space_shape[0] + j]);
+                }
             }
 
             auto step_param = std::make_shared<StepParam>();
@@ -219,12 +225,12 @@ int main(int argc, char *argv[])
                                    storage.get_masks()[-1])
                              .detach();
         }
-        storage.compute_returns(next_value, use_gae, discount_factor, 0.9);
+        storage.compute_returns(next_value, use_gae, discount_factor, gae);
 
         auto update_data = algo->update(storage);
         storage.after_update();
 
-        if (update % 10 == 0 && update > 0)
+        if (update % log_interval == 0 && update > 0)
         {
             auto total_steps = (update + 1) * batch_size * num_envs;
             auto run_time = std::chrono::high_resolution_clock::now() - start_time;
@@ -241,7 +247,7 @@ int main(int argc, char *argv[])
             float average_reward = std::accumulate(reward_history.begin(), reward_history.end(), 0);
             average_reward /= episode_count < reward_average_window_size ? episode_count : reward_average_window_size;
             spdlog::info("Reward: {}", average_reward);
-            render = average_reward > 180;
+            render = average_reward >= render_reward_threshold;
         }
     }
 }
