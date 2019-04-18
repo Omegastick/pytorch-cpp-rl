@@ -30,4 +30,16 @@ class CategoricalOutput : public OutputLayer
 
     std::unique_ptr<Distribution> forward(torch::Tensor x);
 };
+
+class NormalOutput : public OutputLayer
+{
+  private:
+    nn::Linear linear_loc;
+    torch::Tensor scale_log;
+
+  public:
+    NormalOutput(unsigned int num_inputs, unsigned int num_outputs);
+
+    std::unique_ptr<Distribution> forward(torch::Tensor x);
+};
 }

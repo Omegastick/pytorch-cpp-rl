@@ -25,7 +25,7 @@ NNBase::NNBase(bool recurrent,
 
 // Do not use.
 //
-// Instantiate a subclass and use their's instead
+// Instantiate a subclass and use theirs instead
 std::vector<torch::Tensor> NNBase::forward(torch::Tensor /*inputs*/,
                                            torch::Tensor /*hxs*/,
                                            torch::Tensor /*masks*/)
