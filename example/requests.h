@@ -38,7 +38,7 @@ struct ResetParam
 
 struct StepParam
 {
-    std::vector<std::vector<int>> actions;
+    std::vector<std::vector<float>> actions;
     bool render;
     MSGPACK_DEFINE_MAP(actions, render);
 };

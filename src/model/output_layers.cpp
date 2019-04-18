@@ -29,19 +29,17 @@ std::unique_ptr<Distribution> CategoricalOutput::forward(torch::Tensor x)
 
 NormalOutput::NormalOutput(unsigned int num_inputs,
                            unsigned int num_outputs)
-    : linear_loc(num_inputs, num_outputs),
-      linear_scale(num_inputs, num_outputs)
+    : linear_loc(num_inputs, num_outputs)
 {
     register_module("linear_loc", linear_loc);
-    register_module("linear_scale", linear_scale);
-    init_weights(linear_loc->named_parameters(), 0.01, 0);
-    init_weights(linear_scale->named_parameters(), 0.1, 0);
+    scale_log = register_parameter("scale_log", torch::zeros({num_outputs}));
+    init_weights(linear_loc->named_parameters(), 1, 0);
 }
 
 std::unique_ptr<Distribution> NormalOutput::forward(torch::Tensor x)
 {
     auto loc = linear_loc(x);
-    auto scale = torch::relu(linear_scale(x));
+    auto scale = scale_log.exp();
     return std::make_unique<Normal>(loc, scale);
 }
 

@@ -110,9 +110,8 @@ class Server:
         if isinstance(self.env.action_space, gym.spaces.Discrete):
             actions = actions.squeeze(-1)
         observation, reward, done, info = self.env.step(actions)
-        if isinstance(self.env.action_space, gym.spaces.Discrete):
-            reward = np.expand_dims(reward, -1)
-            done = np.expand_dims(done, -1)
+        reward = np.expand_dims(reward, -1)
+        done = np.expand_dims(done, -1)
         if render:
             self.env.render()
         return observation, reward, done, info

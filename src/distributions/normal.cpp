@@ -23,7 +23,7 @@ Normal::Normal(const torch::Tensor loc,
 
 torch::Tensor Normal::entropy()
 {
-    return 0.5 + 0.5 * std::log(2 * M_PI) + torch::log(scale);
+    return (0.5 + 0.5 * std::log(2 * M_PI) + torch::log(scale)).sum(-1);
 }
 
 std::vector<int64_t> Normal::extended_shape(c10::ArrayRef<int64_t> sample_shape)
@@ -83,23 +83,15 @@ TEST_CASE("Normal")
             INFO("Entropies: \n"
                  << entropies);
 
-            CHECK(entropies[0][0].item().toDouble() ==
-                  doctest::Approx(3.0284).epsilon(1e-3));
-            CHECK(entropies[0][1].item().toDouble() ==
-                  doctest::Approx(2.8052).epsilon(1e-3));
-            CHECK(entropies[0][2].item().toDouble() ==
-                  doctest::Approx(2.5176).epsilon(1e-3));
-            CHECK(entropies[1][0].item().toDouble() ==
-                  doctest::Approx(2.1121).epsilon(1e-3));
-            CHECK(entropies[1][1].item().toDouble() ==
-                  doctest::Approx(1.4189).epsilon(1e-3));
-            CHECK(entropies[1][2].item().toDouble() ==
+            CHECK(entropies[0].item().toDouble() ==
+                  doctest::Approx(8.3512).epsilon(1e-3));
+            CHECK(entropies[1].item().toDouble() ==
                   -std::numeric_limits<float>::infinity());
         }
 
         SUBCASE("Output tensor is the correct size")
         {
-            CHECK(entropies.sizes().vec() == std::vector<int64_t>{2, 3});
+            CHECK(entropies.sizes().vec() == std::vector<int64_t>{2});
         }
     }
 

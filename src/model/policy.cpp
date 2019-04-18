@@ -1,3 +1,4 @@
+#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/model/policy.h"
@@ -12,22 +13,20 @@ using namespace torch;
 namespace cpprl
 {
 PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
-    : base(base)
+    : base(base), action_space(action_space)
 {
     register_module("base", base);
 
-    int num_outputs;
+    int num_outputs = action_space.shape[0];
     if (action_space.type == "Discrete")
     {
-        num_outputs = action_space.shape[0];
         output_layer = std::make_shared<CategoricalOutput>(
             base->get_output_size(), num_outputs);
-        register_module("output", output_layer);
     }
     else if (action_space.type == "Box")
     {
-        // num_outputs = action_space.shape[0];
-        // self.dist = DiagGaussian(self.base.output_size, num_outputs)
+        output_layer = std::make_shared<NormalOutput>(
+            base->get_output_size(), num_outputs);
     }
     else if (action_space.type == "MultiBinary")
     {
@@ -36,8 +35,10 @@ PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
     }
     else
     {
+        spdlog::error("Action space {} not supported", action_space.type);
         throw std::exception();
     }
+    register_module("output", output_layer);
 }
 
 std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
@@ -50,9 +51,19 @@ std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
     auto action = dist->sample();
     auto action_log_probs = dist->log_prob(action);
 
+    if (action_space.type == "Discrete")
+    {
+        action = action.unsqueeze(-1);
+        action_log_probs = action_log_probs.unsqueeze(-1);
+    }
+    else
+    {
+        action_log_probs = dist->log_prob(action).sum(-1, true);
+    }
+
     return {base_output[0], // value
-            action.unsqueeze(-1),
-            action_log_probs.unsqueeze(-1),
+            action,
+            action_log_probs,
             base_output[2]}; // rnn_hxs
 }
 
@@ -64,13 +75,23 @@ std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
     auto base_output = base->forward(inputs, rnn_hxs, masks);
     auto dist = output_layer->forward(base_output[1]);
 
-    auto action_log_probs = dist->log_prob(actions.squeeze(-1))
-                                .view({actions.size(0), -1})
-                                .sum(-1);
+    torch::Tensor action_log_probs;
+    if (action_space.type == "Discrete")
+    {
+        action_log_probs = dist->log_prob(actions.squeeze(-1))
+                               .view({actions.size(0), -1})
+                               .sum(-1)
+                               .unsqueeze(-1);
+    }
+    else
+    {
+        action_log_probs = dist->log_prob(actions).sum(-1, true);
+    }
+
     auto entropy = dist->entropy().mean();
 
     return {base_output[0], // value
-            action_log_probs.unsqueeze(-1),
+            action_log_probs,
             entropy,
             base_output[2]}; // rnn_hxs
 }

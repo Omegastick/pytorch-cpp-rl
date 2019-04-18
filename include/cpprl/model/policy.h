@@ -7,18 +7,18 @@
 
 #include "cpprl/model/nn_base.h"
 #include "cpprl/model/output_layers.h"
+#include "cpprl/spaces.h"
 
 using namespace torch;
 
 namespace cpprl
 {
-class ActionSpace;
-
 class PolicyImpl : public nn::Module
 {
   private:
     std::shared_ptr<NNBase> base;
     std::shared_ptr<OutputLayer> output_layer;
+    ActionSpace action_space;
 
     std::vector<torch::Tensor> forward_gru(torch::Tensor x,
                                            torch::Tensor hxs,
