@@ -26,10 +26,11 @@ PPO::PPO(Policy &policy,
          float epsilon,
          float max_grad_norm)
     : policy(policy),
-      clip_param(clip_param),
       value_loss_coef(value_loss_coef),
       entropy_coef(entropy_coef),
       max_grad_norm(max_grad_norm),
+      original_learning_rate(learning_rate),
+      original_clip_param(clip_param),
       num_epoch(num_epoch),
       num_mini_batch(num_mini_batch),
       optimizer(std::make_unique<torch::optim::Adam>(
@@ -37,8 +38,12 @@ PPO::PPO(Policy &policy,
           torch::optim::AdamOptions(learning_rate)
               .eps(epsilon))) {}
 
-std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts)
+std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level)
 {
+    // Decay lr and clip parameter
+    float clip_param = original_clip_param * decay_level;
+    optimizer->options.learning_rate_ = original_learning_rate * decay_level;
+
     // Calculate advantages
     auto returns = rollouts.get_returns();
     auto value_preds = rollouts.get_value_predictions();

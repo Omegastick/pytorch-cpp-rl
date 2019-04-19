@@ -16,8 +16,8 @@ class A2C : public Algorithm
 {
   private:
     Policy &policy;
-    float value_loss_coef, entropy_coef, max_grad_norm;
-    std::unique_ptr<torch::optim::Optimizer> optimizer;
+    float value_loss_coef, entropy_coef, max_grad_norm, original_learning_rate;
+    std::unique_ptr<torch::optim::RMSprop> optimizer;
 
   public:
     A2C(Policy &policy,
@@ -28,6 +28,6 @@ class A2C : public Algorithm
         float alpha = 0.99,
         float max_grad_norm = 0.5);
 
-    std::vector<UpdateDatum> update(RolloutStorage &rollouts);
+    std::vector<UpdateDatum> update(RolloutStorage &rollouts, float decay_level = 1);
 };
 }
