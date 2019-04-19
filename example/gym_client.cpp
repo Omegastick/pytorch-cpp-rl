@@ -15,28 +15,30 @@ using namespace cpprl;
 
 // Algorithm hyperparameters
 const std::string algorithm = "PPO";
-const int batch_size = 512;
+const int batch_size = 256;
 const float clip_param = 0.2;
 const float discount_factor = 0.99;
-const float entropy_coef = 1e-5;
+const float entropy_coef = 0.0;
 const float gae = 0.95;
 const float learning_rate = 3e-4;
 const int log_interval = 1;
-const int num_epoch = 3;
-const int num_mini_batch = 32;
+const int max_frames = 1e+7;
+const int num_epoch = 10;
+const int num_mini_batch = 8;
 const int reward_average_window_size = 10;
 const bool use_gae = true;
+const bool use_lr_decay = true;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
 const float env_gamma = discount_factor; // Set to -1 to disable
-const std::string env_name = "BipedalWalker-v2";
+const std::string env_name = "BipedalWalkerHardcore-v2";
 const int num_envs = 8;
-const float render_reward_threshold = 300;
+const float render_reward_threshold = 250;
 
 // Model hyperparameters
 const int hidden_size = 64;
-const bool recurrent = false;
+const bool recurrent = true;
 const bool use_cuda = false;
 
 std::vector<float> flatten_vector(std::vector<float> const &input)
@@ -143,7 +145,8 @@ int main(int argc, char *argv[])
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    for (int update = 0; update < 100000; ++update)
+    int num_updates = max_frames / (batch_size * num_envs);
+    for (int update = 0; update < num_updates; ++update)
     {
         for (int step = 0; step < batch_size; ++step)
         {
@@ -227,7 +230,16 @@ int main(int argc, char *argv[])
         }
         storage.compute_returns(next_value, use_gae, discount_factor, gae);
 
-        auto update_data = algo->update(storage);
+        float decay_level;
+        if (use_lr_decay)
+        {
+            decay_level = 1. - static_cast<float>(update) / num_updates;
+        }
+        else
+        {
+            decay_level = 1;
+        }
+        auto update_data = algo->update(storage, decay_level);
         storage.after_update();
 
         if (update % log_interval == 0 && update > 0)
@@ -237,7 +249,7 @@ int main(int argc, char *argv[])
             auto run_time_secs = std::chrono::duration_cast<std::chrono::seconds>(run_time);
             auto fps = total_steps / (run_time_secs.count() + 1e-9);
             spdlog::info("---");
-            spdlog::info("Update: {}", update);
+            spdlog::info("Update: {}/{}", update, num_updates);
             spdlog::info("Total frames: {}", total_steps);
             spdlog::info("FPS: {}", fps);
             for (const auto &datum : update_data)

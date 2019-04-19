@@ -16,9 +16,9 @@ class PPO : public Algorithm
 {
   private:
     Policy &policy;
-    float clip_param, value_loss_coef, entropy_coef, max_grad_norm;
+    float value_loss_coef, entropy_coef, max_grad_norm, original_learning_rate, original_clip_param;
     int num_epoch, num_mini_batch;
-    std::unique_ptr<torch::optim::Optimizer> optimizer;
+    std::unique_ptr<torch::optim::Adam> optimizer;
 
   public:
     PPO(Policy &policy,
@@ -31,6 +31,6 @@ class PPO : public Algorithm
         float epsilon = 1e-8,
         float max_grad_norm = 0.5);
 
-    std::vector<UpdateDatum> update(RolloutStorage &rollouts);
+    std::vector<UpdateDatum> update(RolloutStorage &rollouts, float decay_level = 1);
 };
 }
