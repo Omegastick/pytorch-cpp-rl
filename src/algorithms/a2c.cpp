@@ -24,14 +24,18 @@ A2C::A2C(Policy &policy,
       value_loss_coef(value_loss_coef),
       entropy_coef(entropy_coef),
       max_grad_norm(max_grad_norm),
+      original_learning_rate(learning_rate),
       optimizer(std::make_unique<torch::optim::RMSprop>(
           policy->parameters(),
           torch::optim::RMSpropOptions(learning_rate)
               .eps(epsilon)
               .alpha(alpha))) {}
 
-std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts)
+std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level)
 {
+    // Decay learning rate
+    optimizer->options.learning_rate_ = original_learning_rate * decay_level;
+
     // Prep work
     auto full_obs_shape = rollouts.get_observations().sizes();
     std::vector<int64_t> obs_shape(full_obs_shape.begin() + 2,
@@ -79,9 +83,9 @@ std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts)
 
 TEST_CASE("A2C")
 {
-    torch::manual_seed(0);
     SUBCASE("update() learns basic pattern")
     {
+        torch::manual_seed(0);
         auto base = std::make_shared<MlpBase>(1, false, 5);
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
@@ -151,6 +155,7 @@ TEST_CASE("A2C")
 
     SUBCASE("update() learns basic game")
     {
+        torch::manual_seed(0);
         auto base = std::make_shared<MlpBase>(1, false, 5);
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
