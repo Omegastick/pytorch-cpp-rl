@@ -1,4 +1,5 @@
 #include <c10/util/ArrayRef.h>
+#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/distributions/categorical.h"
@@ -11,6 +12,7 @@ Categorical::Categorical(const torch::Tensor *probs,
 {
     if ((probs == nullptr) == (logits == nullptr))
     {
+        spdlog::error("Either probs or logits is required, but not both");
         throw std::exception();
     }
 
