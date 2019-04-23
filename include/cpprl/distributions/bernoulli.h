@@ -7,19 +7,19 @@
 
 namespace cpprl
 {
-class Normal : public Distribution
+class Bernoulli : public Distribution
 {
   private:
-    torch::Tensor loc, scale;
+    torch::Tensor probs, logits, param;
 
   public:
-    Normal(const torch::Tensor loc, const torch::Tensor scale);
+    Bernoulli(const torch::Tensor *probs, const torch::Tensor *logits);
 
     torch::Tensor entropy();
     torch::Tensor log_prob(torch::Tensor value);
     torch::Tensor sample(c10::ArrayRef<int64_t> sample_shape = {});
 
-    inline torch::Tensor get_loc() { return loc; }
-    inline torch::Tensor get_scale() { return scale; }
+    inline torch::Tensor get_logits() { return logits; }
+    inline torch::Tensor get_probs() { return probs; }
 };
 }

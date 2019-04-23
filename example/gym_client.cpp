@@ -15,16 +15,16 @@ using namespace cpprl;
 
 // Algorithm hyperparameters
 const std::string algorithm = "PPO";
-const int batch_size = 256;
+const int batch_size = 2048;
 const float clip_param = 0.2;
 const float discount_factor = 0.99;
-const float entropy_coef = 0.0;
+const float entropy_coef = 0.001;
 const float gae = 0.95;
-const float learning_rate = 3e-4;
+const float learning_rate = 2.5e-4;
 const int log_interval = 1;
-const int max_frames = 1e+7;
+const int max_frames = 10e+7;
 const int num_epoch = 10;
-const int num_mini_batch = 8;
+const int num_mini_batch = 32;
 const int reward_average_window_size = 10;
 const bool use_gae = true;
 const bool use_lr_decay = true;
@@ -33,12 +33,12 @@ const float value_loss_coef = 0.5;
 // Environment hyperparameters
 const float env_gamma = discount_factor; // Set to -1 to disable
 const std::string env_name = "BipedalWalkerHardcore-v2";
-const int num_envs = 8;
-const float render_reward_threshold = 250;
+const int num_envs = 16;
+const float render_reward_threshold = 160;
 
 // Model hyperparameters
 const int hidden_size = 64;
-const bool recurrent = true;
+const bool recurrent = false;
 const bool use_cuda = false;
 
 std::vector<float> flatten_vector(std::vector<float> const &input)
