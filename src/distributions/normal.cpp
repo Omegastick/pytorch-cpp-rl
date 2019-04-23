@@ -26,21 +26,6 @@ torch::Tensor Normal::entropy()
     return (0.5 + 0.5 * std::log(2 * M_PI) + torch::log(scale)).sum(-1);
 }
 
-std::vector<int64_t> Normal::extended_shape(c10::ArrayRef<int64_t> sample_shape)
-{
-    std::vector<int64_t> output_shape;
-    output_shape.insert(output_shape.end(),
-                        sample_shape.begin(),
-                        sample_shape.end());
-    output_shape.insert(output_shape.end(),
-                        batch_shape.begin(),
-                        batch_shape.end());
-    output_shape.insert(output_shape.end(),
-                        event_shape.begin(),
-                        event_shape.end());
-    return output_shape;
-}
-
 torch::Tensor Normal::log_prob(torch::Tensor value)
 {
     auto variance = scale.pow(2);

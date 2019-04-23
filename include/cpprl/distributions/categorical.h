@@ -10,14 +10,8 @@ namespace cpprl
 class Categorical : public Distribution
 {
   private:
-    torch::Tensor probs;
-    torch::Tensor logits;
-    std::vector<int64_t> batch_shape;
-    std::vector<int64_t> event_shape;
-    torch::Tensor param;
+    torch::Tensor probs, logits, param;
     int num_events;
-
-    std::vector<int64_t> extended_shape(c10::ArrayRef<int64_t> sample_shape);
 
   public:
     Categorical(const torch::Tensor *probs, const torch::Tensor *logits);

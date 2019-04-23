@@ -10,14 +10,7 @@ namespace cpprl
 class Bernoulli : public Distribution
 {
   private:
-    torch::Tensor probs;
-    torch::Tensor logits;
-    std::vector<int64_t> batch_shape;
-    std::vector<int64_t> event_shape;
-    torch::Tensor param;
-    int num_events;
-
-    std::vector<int64_t> extended_shape(c10::ArrayRef<int64_t> sample_shape);
+    torch::Tensor probs, logits, param;
 
   public:
     Bernoulli(const torch::Tensor *probs, const torch::Tensor *logits);

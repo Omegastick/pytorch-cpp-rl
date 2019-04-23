@@ -11,9 +11,6 @@ class Normal : public Distribution
 {
   private:
     torch::Tensor loc, scale;
-    std::vector<int64_t> batch_shape, event_shape;
-
-    std::vector<int64_t> extended_shape(c10::ArrayRef<int64_t> sample_shape);
 
   public:
     Normal(const torch::Tensor loc, const torch::Tensor scale);

@@ -40,28 +40,12 @@ Bernoulli::Bernoulli(const torch::Tensor *probs,
     }
 
     param = probs != nullptr ? *probs : *logits;
-    num_events = param.size(-1);
     batch_shape = param.sizes().vec();
 }
 
 torch::Tensor Bernoulli::entropy()
 {
     return torch::binary_cross_entropy_with_logits(logits, probs, torch::Tensor(), torch::Tensor(), Reduction::None);
-}
-
-std::vector<int64_t> Bernoulli::extended_shape(c10::ArrayRef<int64_t> sample_shape)
-{
-    std::vector<int64_t> output_shape;
-    output_shape.insert(output_shape.end(),
-                        sample_shape.begin(),
-                        sample_shape.end());
-    output_shape.insert(output_shape.end(),
-                        batch_shape.begin(),
-                        batch_shape.end());
-    output_shape.insert(output_shape.end(),
-                        event_shape.begin(),
-                        event_shape.end());
-    return output_shape;
 }
 
 torch::Tensor Bernoulli::log_prob(torch::Tensor value)

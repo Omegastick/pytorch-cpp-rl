@@ -53,21 +53,6 @@ torch::Tensor Categorical::entropy()
     return -p_log_p.sum(-1);
 }
 
-std::vector<int64_t> Categorical::extended_shape(c10::ArrayRef<int64_t> sample_shape)
-{
-    std::vector<int64_t> output_shape;
-    output_shape.insert(output_shape.end(),
-                        sample_shape.begin(),
-                        sample_shape.end());
-    output_shape.insert(output_shape.end(),
-                        batch_shape.begin(),
-                        batch_shape.end());
-    output_shape.insert(output_shape.end(),
-                        event_shape.begin(),
-                        event_shape.end());
-    return output_shape;
-}
-
 torch::Tensor Categorical::log_prob(torch::Tensor value)
 {
     value = value.to(torch::kLong).unsqueeze(-1);
