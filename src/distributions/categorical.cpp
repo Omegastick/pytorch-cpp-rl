@@ -1,5 +1,4 @@
 #include <c10/util/ArrayRef.h>
-#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/distributions/categorical.h"
@@ -12,15 +11,14 @@ Categorical::Categorical(const torch::Tensor *probs,
 {
     if ((probs == nullptr) == (logits == nullptr))
     {
-        spdlog::error("Either probs or logits is required, but not both");
-        throw std::exception();
+        throw std::runtime_error("Either probs or logits is required, but not both");
     }
 
     if (probs != nullptr)
     {
         if (probs->dim() < 1)
         {
-            throw std::exception();
+            throw std::runtime_error("Probabilities tensor must have at least one dimension");
         }
         this->probs = *probs / probs->sum(-1, true);
         // 1.21e-7 is used as the epsilon to match PyTorch's Python results as closely
@@ -32,7 +30,7 @@ Categorical::Categorical(const torch::Tensor *probs,
     {
         if (logits->dim() < 1)
         {
-            throw std::exception();
+            throw std::runtime_error("Logits tensor must have at least one dimension");
         }
         this->logits = *logits - logits->logsumexp(-1, true);
         this->probs = torch::softmax(this->logits, -1);

@@ -1,4 +1,3 @@
-#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/model/policy.h"
@@ -35,8 +34,7 @@ PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
     }
     else
     {
-        spdlog::error("Action space {} not supported", action_space.type);
-        throw std::exception();
+        throw std::runtime_error("Action space " + action_space.type + " not supported");
     }
     register_module("output", output_layer);
 }

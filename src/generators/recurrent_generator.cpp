@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <vector>
 
-#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/generators/recurrent_generator.h"
@@ -49,10 +48,7 @@ MiniBatch RecurrentGenerator::next()
 {
     if (index >= indices.size(0))
     {
-        spdlog::error("No minibatches left in generator. Index {}, minibatch "
-                      "count: {}.",
-                      index, indices.size(0));
-        throw std::exception();
+        throw std::runtime_error("No minibatches left in generator.");
     }
 
     MiniBatch mini_batch;
