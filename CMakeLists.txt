@@ -24,7 +24,6 @@ list(APPEND CPPCHECK_ARGS
     --suppressions-list=${CMAKE_CURRENT_LIST_DIR}/CppCheckSuppressions.txt 
     -I ${CMAKE_CURRENT_LIST_DIR}/src 
     -I ${CMAKE_CURRENT_LIST_DIR}/include 
-    -I ${CMAKE_CURRENT_LIST_DIR}/lib/spdlog/include 
     -I ${CMAKE_CURRENT_LIST_DIR}/example 
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/example
@@ -42,8 +41,6 @@ find_package(Torch REQUIRED)
 if (TORCH_CXX_FLAGS)
     set(CMAKE_CXX_FLAGS ${TORCH_CXX_FLAGS})
 endif()
-## Spdlog
-add_subdirectory(lib/spdlog)
 
 # Define targets
 add_library(cpprl STATIC "")
@@ -64,7 +61,6 @@ endif(MSVC)
 set(CPPRL_INCLUDE_DIRS
     include
     src
-    lib/spdlog/include
     ${TORCH_INCLUDE_DIRS}
 )
 target_include_directories(cpprl PRIVATE ${CPPRL_INCLUDE_DIRS})
