@@ -64,14 +64,22 @@ set(CPPRL_INCLUDE_DIRS
     ${TORCH_INCLUDE_DIRS}
 )
 target_include_directories(cpprl PRIVATE ${CPPRL_INCLUDE_DIRS})
-target_include_directories(cpprl_tests PRIVATE ${CPPRL_INCLUDE_DIRS})
+if (CPPRL_BUILD_TESTS)
+    target_include_directories(cpprl_tests PRIVATE ${CPPRL_INCLUDE_DIRS})
+endif(CPPRL_BUILD_TESTS)
 
 # Linking
 target_link_libraries(cpprl torch ${TORCH_LIBRARIES})
-target_link_libraries(cpprl_tests torch ${TORCH_LIBRARIES})
+target_link_libraries(cpprl torch ${TORCH_LIBRARIES})
+if (CPPRL_BUILD_TESTS)
+    target_link_libraries(cpprl_tests torch ${TORCH_LIBRARIES})
+endif(CPPRL_BUILD_TESTS)
 
 # Example
-add_subdirectory(example)
+option(CPPRL_BUILD_EXAMPLE "Whether or not to build the CppRl Gym example" ON)
+if (CPPRL_BUILD_EXAMPLE)
+    add_subdirectory(example)
+endif(CPPRL_BUILD_EXAMPLE)
 
 # Recurse into source tree
 add_subdirectory(src)
