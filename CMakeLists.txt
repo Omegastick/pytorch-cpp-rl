@@ -24,7 +24,6 @@ list(APPEND CPPCHECK_ARGS
     --suppressions-list=${CMAKE_CURRENT_LIST_DIR}/CppCheckSuppressions.txt 
     -I ${CMAKE_CURRENT_LIST_DIR}/src 
     -I ${CMAKE_CURRENT_LIST_DIR}/include 
-    -I ${CMAKE_CURRENT_LIST_DIR}/lib/spdlog/include 
     -I ${CMAKE_CURRENT_LIST_DIR}/example 
     ${CMAKE_CURRENT_LIST_DIR}/src
     ${CMAKE_CURRENT_LIST_DIR}/example
@@ -42,8 +41,6 @@ find_package(Torch REQUIRED)
 if (TORCH_CXX_FLAGS)
     set(CMAKE_CXX_FLAGS ${TORCH_CXX_FLAGS})
 endif()
-## Spdlog
-add_subdirectory(lib/spdlog)
 
 # Define targets
 add_library(cpprl STATIC "")
@@ -64,18 +61,25 @@ endif(MSVC)
 set(CPPRL_INCLUDE_DIRS
     include
     src
-    lib/spdlog/include
     ${TORCH_INCLUDE_DIRS}
 )
 target_include_directories(cpprl PRIVATE ${CPPRL_INCLUDE_DIRS})
-target_include_directories(cpprl_tests PRIVATE ${CPPRL_INCLUDE_DIRS})
+if (CPPRL_BUILD_TESTS)
+    target_include_directories(cpprl_tests PRIVATE ${CPPRL_INCLUDE_DIRS})
+endif(CPPRL_BUILD_TESTS)
 
 # Linking
 target_link_libraries(cpprl torch ${TORCH_LIBRARIES})
-target_link_libraries(cpprl_tests torch ${TORCH_LIBRARIES})
+target_link_libraries(cpprl torch ${TORCH_LIBRARIES})
+if (CPPRL_BUILD_TESTS)
+    target_link_libraries(cpprl_tests torch ${TORCH_LIBRARIES})
+endif(CPPRL_BUILD_TESTS)
 
 # Example
-add_subdirectory(example)
+option(CPPRL_BUILD_EXAMPLE "Whether or not to build the CppRl Gym example" ON)
+if (CPPRL_BUILD_EXAMPLE)
+    add_subdirectory(example)
+endif(CPPRL_BUILD_EXAMPLE)
 
 # Recurse into source tree
 add_subdirectory(src)

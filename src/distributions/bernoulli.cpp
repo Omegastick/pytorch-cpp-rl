@@ -1,6 +1,5 @@
 #include <ATen/core/Reduction.h>
 #include <c10/util/ArrayRef.h>
-#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/distributions/bernoulli.h"
@@ -13,15 +12,14 @@ Bernoulli::Bernoulli(const torch::Tensor *probs,
 {
     if ((probs == nullptr) == (logits == nullptr))
     {
-        spdlog::error("Either probs or logits is required, but not both");
-        throw std::exception();
+        throw std::runtime_error("Either probs or logits is required, but not both");
     }
 
     if (probs != nullptr)
     {
         if (probs->dim() < 1)
         {
-            throw std::exception();
+            throw std::runtime_error("Probabilities tensor must have at least one dimension");
         }
         this->probs = *probs;
         // 1.21e-7 is used as the epsilon to match PyTorch's Python results as closely
@@ -33,7 +31,7 @@ Bernoulli::Bernoulli(const torch::Tensor *probs,
     {
         if (logits->dim() < 1)
         {
-            throw std::exception();
+            throw std::runtime_error("Logits tensor must have at least one dimension");
         }
         this->logits = *logits;
         this->probs = torch::sigmoid(*logits);

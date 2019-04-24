@@ -2,7 +2,6 @@
 #include <vector>
 
 #include <c10/util/ArrayRef.h>
-#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/generators/feed_forward_generator.h"
@@ -97,13 +96,14 @@ std::unique_ptr<Generator> RolloutStorage::feed_forward_generator(
     auto batch_size = num_processes * num_steps;
     if (batch_size < num_mini_batch)
     {
-        spdlog::error("PPO needs the number of processes ({}) * the number of "
-                      "steps ({}) = {} to be greater than or equal to the number "
-                      "of minibatches ({})",
-                      num_processes,
-                      num_steps,
-                      num_mini_batch);
-        throw std::exception();
+        throw std::runtime_error("PPO needs the number of processes (" +
+                                 std::to_string(num_processes) +
+                                 ") * the number of steps (" +
+                                 std::to_string(num_steps) + ") = " +
+                                 std::to_string(num_processes * num_steps) +
+                                 " to be greater than or equal to the number of minibatches (" +
+                                 std::to_string(num_mini_batch) +
+                                 ")");
     }
     auto mini_batch_size = batch_size / num_mini_batch;
     return std::make_unique<FeedForwardGenerator>(
@@ -143,11 +143,11 @@ std::unique_ptr<Generator> RolloutStorage::recurrent_generator(
     auto num_processes = actions.size(1);
     if (num_processes < num_mini_batch)
     {
-        spdlog::error("PPO needs the number of processes ({}) to be greater than or"
-                      " equal to the number of minibatches ({})",
-                      num_processes,
-                      num_mini_batch);
-        throw std::exception();
+        throw std::runtime_error("PPO needs the number of processes (" +
+                                 std::to_string(num_processes) +
+                                 ") to be greater than or equal to the number of minibatches (" +
+                                 std::to_string(num_mini_batch) +
+                                 ")");
     }
     return std::make_unique<RecurrentGenerator>(
         num_processes,

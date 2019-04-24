@@ -1,7 +1,6 @@
 #include <chrono>
 #include <memory>
 
-#include <spdlog/spdlog.h>
 #include <torch/torch.h>
 
 #include "cpprl/algorithms/ppo.h"

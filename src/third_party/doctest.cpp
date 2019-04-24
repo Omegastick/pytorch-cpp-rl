@@ -1,11 +1,3 @@
-#define DOCTEST_CONFIG_IMPLEMENT
-
-#include <spdlog/spdlog.h>
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 
 #include "third_party/doctest.h"
-
-int main(int argc, char **argv)
-{
-    spdlog::set_level(spdlog::level::off);
-    return doctest::Context(argc, argv).run();
-}
