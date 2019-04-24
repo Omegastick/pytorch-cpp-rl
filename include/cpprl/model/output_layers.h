@@ -20,6 +20,17 @@ class OutputLayer : public nn::Module
 
 inline OutputLayer::~OutputLayer() {}
 
+class BernoulliOutput : public OutputLayer
+{
+  private:
+    nn::Linear linear;
+
+  public:
+    BernoulliOutput(unsigned int num_inputs, unsigned int num_outputs);
+
+    std::unique_ptr<Distribution> forward(torch::Tensor x);
+};
+
 class CategoricalOutput : public OutputLayer
 {
   private:

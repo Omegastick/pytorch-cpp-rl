@@ -29,8 +29,8 @@ PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
     }
     else if (action_space.type == "MultiBinary")
     {
-        // num_outputs = action_space.shape[0];
-        // self.dist = Bernoulli(self.base.output_size, num_outputs)
+        output_layer = std::make_shared<BernoulliOutput>(
+            base->get_output_size(), num_outputs);
     }
     else
     {

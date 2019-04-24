@@ -37,10 +37,12 @@ add_custom_target(
 
 # Dependencies
 ## PyTorch
-find_package(Torch REQUIRED)
-if (TORCH_CXX_FLAGS)
-    set(CMAKE_CXX_FLAGS ${TORCH_CXX_FLAGS})
-endif()
+if (NOT TORCH_FOUND)
+    find_package(Torch REQUIRED)
+    if (TORCH_CXX_FLAGS)
+        set(CMAKE_CXX_FLAGS ${TORCH_CXX_FLAGS})
+    endif()
+endif (NOT TORCH_FOUND)
 
 # Define targets
 add_library(cpprl STATIC "")
