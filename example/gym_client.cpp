@@ -4,6 +4,7 @@
 
 #include <spdlog/spdlog.h>
 #include <spdlog/sinks/basic_file_sink.h>
+#include <ATen/Parallel.h>
 
 #include <cpprl/cpprl.h>
 
@@ -67,7 +68,7 @@ int main(int argc, char *argv[])
     spdlog::set_level(spdlog::level::debug);
     spdlog::set_pattern("%^[%T %7l] %v%$");
 
-    torch::set_num_threads(1);
+    at::set_num_threads(1);
     torch::manual_seed(0);
 
     torch::Device device = use_cuda ? torch::kCUDA : torch::kCPU;
