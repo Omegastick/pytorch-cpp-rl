@@ -16,11 +16,12 @@ class A2C : public Algorithm
 {
   private:
     Policy &policy;
-    float value_loss_coef, entropy_coef, max_grad_norm, original_learning_rate;
+    float actor_loss_coef, value_loss_coef, entropy_coef, max_grad_norm, original_learning_rate;
     std::unique_ptr<torch::optim::RMSprop> optimizer;
 
   public:
     A2C(Policy &policy,
+        float actor_loss_coef,
         float value_loss_coef,
         float entropy_coef,
         float learning_rate,

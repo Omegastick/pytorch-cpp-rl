@@ -14,6 +14,7 @@
 namespace cpprl
 {
 A2C::A2C(Policy &policy,
+         float actor_loss_coef,
          float value_loss_coef,
          float entropy_coef,
          float learning_rate,
@@ -21,6 +22,7 @@ A2C::A2C(Policy &policy,
          float alpha,
          float max_grad_norm)
     : policy(policy),
+      actor_loss_coef(actor_loss_coef),
       value_loss_coef(value_loss_coef),
       entropy_coef(entropy_coef),
       max_grad_norm(max_grad_norm),
@@ -90,7 +92,7 @@ TEST_CASE("A2C")
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
         RolloutStorage storage(5, 2, {1}, space, 5, torch::kCPU);
-        A2C a2c(policy, 0.5, 1e-3, 0.001);
+        A2C a2c(policy, 1, 0.5, 1e-3, 0.001);
 
         // The reward is the action
         auto pre_game_probs = policy->get_probs(
@@ -160,7 +162,7 @@ TEST_CASE("A2C")
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
         RolloutStorage storage(5, 2, {1}, space, 5, torch::kCPU);
-        A2C a2c(policy, 0.5, 1e-7, 0.0001);
+        A2C a2c(policy, 1, 0.5, 1e-7, 0.0001);
 
         // The game is: If the action matches the input, give a reward of 1, otherwise -1
         auto pre_game_probs = policy->get_probs(

@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
     std::unique_ptr<Algorithm> algo;
     if (algorithm == "A2C")
     {
-        algo = std::make_unique<A2C>(policy, value_loss_coef, entropy_coef, learning_rate);
+        algo = std::make_unique<A2C>(policy, actor_loss_coef, value_loss_coef, entropy_coef, learning_rate);
     }
     else if (algorithm == "PPO")
     {
