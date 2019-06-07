@@ -19,12 +19,14 @@ PPO::PPO(Policy &policy,
          float clip_param,
          int num_epoch,
          int num_mini_batch,
+         float actor_loss_coef,
          float value_loss_coef,
          float entropy_coef,
          float learning_rate,
          float epsilon,
          float max_grad_norm)
     : policy(policy),
+      actor_loss_coef(actor_loss_coef),
       value_loss_coef(value_loss_coef),
       entropy_coef(entropy_coef),
       max_grad_norm(max_grad_norm),
@@ -104,7 +106,7 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
 
             // Total loss
             auto loss = (value_loss * value_loss_coef +
-                         action_loss -
+                         action_loss * actor_loss_coef -
                          evaluate_result[2] * entropy_coef);
 
             // Step optimizer
@@ -139,7 +141,7 @@ TEST_CASE("PPO")
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
         RolloutStorage storage(20, 2, {1}, space, 5, torch::kCPU);
-        PPO ppo(policy, 0.2, 3, 5, 0.5, 1e-3, 0.001);
+        PPO ppo(policy, 0.2, 3, 5, 1, 0.5, 1e-3, 0.001);
 
         // The reward is the action
         auto pre_game_probs = policy->get_probs(
@@ -208,7 +210,7 @@ TEST_CASE("PPO")
         ActionSpace space{"Discrete", {2}};
         Policy policy(space, base);
         RolloutStorage storage(20, 2, {1}, space, 5, torch::kCPU);
-        PPO ppo(policy, 0.2, 3, 5, 0.5, 1e-3, 0.001);
+        PPO ppo(policy, 0.2, 3, 5, 1, 0.5, 1e-3, 0.001);
 
         // The game is: If the action matches the input, give a reward of 1, otherwise -1
         auto pre_game_probs = policy->get_probs(

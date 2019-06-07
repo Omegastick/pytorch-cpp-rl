@@ -29,6 +29,7 @@ const int num_mini_batch = 32;
 const int reward_average_window_size = 10;
 const bool use_gae = true;
 const bool use_lr_decay = true;
+const float actor_loss_coef = 1.0;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
@@ -134,7 +135,7 @@ int main(int argc, char *argv[])
     }
     else if (algorithm == "PPO")
     {
-        algo = std::make_unique<PPO>(policy, clip_param, num_epoch, num_mini_batch, value_loss_coef, entropy_coef, learning_rate);
+        algo = std::make_unique<PPO>(policy, clip_param, num_epoch, num_mini_batch, actor_loss_coef, value_loss_coef, entropy_coef, learning_rate);
     }
 
     storage.set_first_observation(observation);
