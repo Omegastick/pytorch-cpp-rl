@@ -10,7 +10,7 @@
 namespace cpprl
 {
 class Policy;
-class ROlloutStorage;
+class RolloutStorage;
 
 class PPO : public Algorithm
 {
