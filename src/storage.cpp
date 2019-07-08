@@ -21,8 +21,8 @@ RolloutStorage::RolloutStorage(int64_t num_steps,
     : device(device), num_steps(num_steps), step(0)
 {
     std::vector<int64_t> observations_shape{num_steps + 1, num_processes};
-    observations_shape.insert(observations_shape.end(), obs_shape.begin(),
-                              obs_shape.end());
+    observations_shape.insert(observations_shape.end(),
+                              obs_shape.begin(), obs_shape.end());
     observations = torch::zeros(observations_shape, torch::TensorOptions(device));
     hidden_states = torch::zeros({num_steps + 1, num_processes,
                                   hidden_state_size},
@@ -46,6 +46,59 @@ RolloutStorage::RolloutStorage(int64_t num_steps,
         actions = actions.to(torch::kLong);
     }
     masks = torch::ones({num_steps + 1, num_processes, 1}, torch::TensorOptions(device));
+}
+
+RolloutStorage::RolloutStorage(std::vector<RolloutStorage *> individual_storages,
+                               torch::Device device)
+    : device(device), step(0)
+{
+    std::vector<torch::Tensor> observations_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(observations_vec),
+                   [](RolloutStorage *storage) { return storage->get_observations(); });
+    observations = torch::cat(observations_vec, 1);
+
+    std::vector<torch::Tensor> hidden_states_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(hidden_states_vec),
+                   [](RolloutStorage *storage) { return storage->get_hidden_states(); });
+    hidden_states = torch::cat(hidden_states_vec, 1);
+
+    std::vector<torch::Tensor> rewards_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(rewards_vec),
+                   [](RolloutStorage *storage) { return storage->get_rewards(); });
+    rewards = torch::cat(rewards_vec, 1);
+
+    std::vector<torch::Tensor> value_predictions_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(value_predictions_vec),
+                   [](RolloutStorage *storage) { return storage->get_value_predictions(); });
+    value_predictions = torch::cat(value_predictions_vec, 1);
+
+    std::vector<torch::Tensor> returns_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(returns_vec),
+                   [](RolloutStorage *storage) { return storage->get_returns(); });
+    returns = torch::cat(returns_vec, 1);
+
+    std::vector<torch::Tensor> action_log_probs_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(action_log_probs_vec),
+                   [](RolloutStorage *storage) { return storage->get_action_log_probs(); });
+    action_log_probs = torch::cat(action_log_probs_vec, 1);
+
+    std::vector<torch::Tensor> actions_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(actions_vec),
+                   [](RolloutStorage *storage) { return storage->get_actions(); });
+    actions = torch::cat(actions_vec, 1);
+
+    std::vector<torch::Tensor> masks_vec;
+    std::transform(individual_storages.begin(), individual_storages.end(),
+                   std::back_inserter(masks_vec),
+                   [](RolloutStorage *storage) { return storage->get_masks(); });
+    masks = torch::cat(masks_vec, 1);
 }
 
 void RolloutStorage::after_update()
@@ -381,7 +434,7 @@ TEST_CASE("RolloutStorage")
         }
     }
 
-    SUBCASE("after_update() copies last observation, hidden state and mask to "
+    SUBCASE("after_update() copies last observation, moves hidden state and mask to "
             "the 0th timestep")
     {
         RolloutStorage storage(3, 2, {3}, ActionSpace{"Discrete", {3}}, 2, torch::kCPU);
@@ -444,6 +497,76 @@ TEST_CASE("RolloutStorage")
         RolloutStorage storage(3, 5, {5, 2}, ActionSpace{"Discrete", {3}}, 10, torch::kCPU);
         auto generator = storage.recurrent_generator(torch::rand({3, 5, 1}), 5);
         generator->next();
+    }
+
+    SUBCASE("Can combine multiple storages into one")
+    {
+        std::vector<RolloutStorage> storages;
+        for (int i = 0; i < 5; ++i)
+        {
+            storages.push_back({3, 1, {4}, ActionSpace{"Discrete", {3}}, 5, torch::kCPU});
+
+            std::vector<float> value_preds{1};
+            std::vector<float> rewards{1};
+            std::vector<float> masks{1};
+            storages[i].insert(torch::zeros({1, 4}),
+                               torch::zeros({1, 5}),
+                               torch::zeros({1, 1}),
+                               torch::zeros({1, 1}),
+                               torch::from_blob(value_preds.data(), {1, 1}),
+                               torch::from_blob(rewards.data(), {1, 1}),
+                               torch::from_blob(masks.data(), {1, 1}));
+            value_preds = {2};
+            rewards = {2};
+            masks = {0};
+            storages[i].insert(torch::zeros({1, 4}),
+                               torch::zeros({1, 5}),
+                               torch::zeros({1, 1}),
+                               torch::zeros({1, 1}),
+                               torch::from_blob(value_preds.data(), {1, 1}),
+                               torch::from_blob(rewards.data(), {1, 1}),
+                               torch::from_blob(masks.data(), {1, 1}));
+            value_preds = {3};
+            rewards = {3};
+            masks = {1};
+            storages[i].insert(torch::zeros({1, 4}),
+                               torch::zeros({1, 5}),
+                               torch::zeros({1, 1}),
+                               torch::zeros({1, 1}),
+                               torch::from_blob(value_preds.data(), {1, 1}),
+                               torch::from_blob(rewards.data(), {1, 1}),
+                               torch::from_blob(masks.data(), {1, 1}));
+        }
+
+        std::vector<RolloutStorage *> pointers;
+        std::transform(storages.begin(), storages.end(), std::back_inserter(pointers),
+                       [](RolloutStorage &storage) { return &storage; });
+
+        RolloutStorage combined_storage(pointers, torch::kCPU);
+
+        CHECK(combined_storage.get_observations().size(0) == 4);
+        CHECK(combined_storage.get_observations().size(1) == 5);
+        CHECK(combined_storage.get_hidden_states().size(0) == 4);
+        CHECK(combined_storage.get_hidden_states().size(1) == 5);
+        CHECK(combined_storage.get_hidden_states().size(2) == 5);
+        CHECK(combined_storage.get_rewards().size(0) == 3);
+        CHECK(combined_storage.get_rewards().size(1) == 5);
+        CHECK(combined_storage.get_rewards().size(2) == 1);
+        CHECK(combined_storage.get_value_predictions().size(0) == 4);
+        CHECK(combined_storage.get_value_predictions().size(1) == 5);
+        CHECK(combined_storage.get_value_predictions().size(2) == 1);
+        CHECK(combined_storage.get_returns().size(0) == 4);
+        CHECK(combined_storage.get_returns().size(1) == 5);
+        CHECK(combined_storage.get_returns().size(2) == 1);
+        CHECK(combined_storage.get_action_log_probs().size(0) == 3);
+        CHECK(combined_storage.get_action_log_probs().size(1) == 5);
+        CHECK(combined_storage.get_action_log_probs().size(2) == 1);
+        CHECK(combined_storage.get_actions().size(0) == 3);
+        CHECK(combined_storage.get_actions().size(1) == 5);
+        CHECK(combined_storage.get_actions().size(2) == 1);
+        CHECK(combined_storage.get_masks().size(0) == 4);
+        CHECK(combined_storage.get_masks().size(1) == 5);
+        CHECK(combined_storage.get_masks().size(2) == 1);
     }
 }
 }

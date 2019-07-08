@@ -27,6 +27,8 @@ class RolloutStorage
                    int64_t hidden_state_size,
                    torch::Device device);
 
+    RolloutStorage(std::vector<RolloutStorage *> individual_storages, torch::Device device);
+
     void after_update();
     void compute_returns(torch::Tensor next_value,
                          bool use_gae,
