@@ -50,7 +50,9 @@ RolloutStorage::RolloutStorage(int64_t num_steps,
 
 RolloutStorage::RolloutStorage(std::vector<RolloutStorage *> individual_storages,
                                torch::Device device)
-    : device(device), step(0)
+    : device(device),
+      num_steps(individual_storages[0]->get_rewards().size(0)),
+      step(0)
 {
     std::vector<torch::Tensor> observations_vec;
     std::transform(individual_storages.begin(), individual_storages.end(),
