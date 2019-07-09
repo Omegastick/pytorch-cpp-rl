@@ -24,7 +24,8 @@ PPO::PPO(Policy &policy,
          float entropy_coef,
          float learning_rate,
          float epsilon,
-         float max_grad_norm)
+         float max_grad_norm,
+         float kl_target)
     : policy(policy),
       actor_loss_coef(actor_loss_coef),
       value_loss_coef(value_loss_coef),
@@ -32,6 +33,7 @@ PPO::PPO(Policy &policy,
       max_grad_norm(max_grad_norm),
       original_learning_rate(learning_rate),
       original_clip_param(clip_param),
+      kl_target(kl_target),
       num_epoch(num_epoch),
       num_mini_batch(num_mini_batch),
       optimizer(std::make_unique<torch::optim::Adam>(
@@ -57,6 +59,9 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
     float total_value_loss = 0;
     float total_action_loss = 0;
     float total_entropy = 0;
+    float kl_divergence = 0;
+    float kl_early_stopped = -1;
+    int num_updates = 0;
 
     // Epoch loop
     for (int epoch = 0; epoch < num_epoch; ++epoch)
@@ -86,6 +91,17 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
                 mini_batch.masks,
                 mini_batch.actions);
 
+            // Calculate approximate KL divergence for info and early stopping
+            kl_divergence = (mini_batch.action_log_probs - evaluate_result[1])
+                                .mean()
+                                .item()
+                                .toFloat();
+            if (kl_divergence > kl_target * 1.5)
+            {
+                kl_early_stopped = num_updates;
+                goto finish_update;
+            }
+
             // Calculate difference ratio between old and new action probabilites
             auto ratio = torch::exp(evaluate_result[1] -
                                     mini_batch.action_log_probs);
@@ -114,6 +130,7 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
             loss.backward();
             // TODO: Implement gradient norm clipping
             optimizer->step();
+            num_updates++;
 
             total_value_loss += value_loss.item().toFloat();
             total_action_loss += action_loss.item().toFloat();
@@ -121,15 +138,26 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
         }
     }
 
-    auto num_updates = num_epoch * num_mini_batch;
-
+finish_update:
     total_value_loss /= num_updates;
     total_action_loss /= num_updates;
     total_entropy /= num_updates;
 
-    return {{"Value loss", total_value_loss},
-            {"Action loss", total_action_loss},
-            {"Entropy", total_entropy}};
+    if (kl_early_stopped > -1)
+    {
+        return {{"Value loss", total_value_loss},
+                {"Action loss", total_action_loss},
+                {"Entropy", total_entropy},
+                {"KL divergence", kl_divergence},
+                {"KL divergence early stop update", kl_early_stopped}};
+    }
+    else
+    {
+        return {{"Value loss", total_value_loss},
+                {"Action loss", total_action_loss},
+                {"Entropy", total_entropy},
+                {"KL divergence", kl_divergence}};
+    }
 }
 
 TEST_CASE("PPO")
