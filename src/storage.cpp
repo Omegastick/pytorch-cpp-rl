@@ -511,30 +511,30 @@ TEST_CASE("RolloutStorage")
             std::vector<float> value_preds{1};
             std::vector<float> rewards{1};
             std::vector<float> masks{1};
-            storages[i].insert(torch::zeros({1, 4}),
-                               torch::zeros({1, 5}),
-                               torch::zeros({1, 1}),
-                               torch::zeros({1, 1}),
+            storages[i].insert(torch::rand({1, 4}),
+                               torch::rand({1, 5}),
+                               torch::rand({1, 1}),
+                               torch::rand({1, 1}),
                                torch::from_blob(value_preds.data(), {1, 1}),
                                torch::from_blob(rewards.data(), {1, 1}),
                                torch::from_blob(masks.data(), {1, 1}));
             value_preds = {2};
             rewards = {2};
             masks = {0};
-            storages[i].insert(torch::zeros({1, 4}),
-                               torch::zeros({1, 5}),
-                               torch::zeros({1, 1}),
-                               torch::zeros({1, 1}),
+            storages[i].insert(torch::rand({1, 4}),
+                               torch::rand({1, 5}),
+                               torch::rand({1, 1}),
+                               torch::rand({1, 1}),
                                torch::from_blob(value_preds.data(), {1, 1}),
                                torch::from_blob(rewards.data(), {1, 1}),
                                torch::from_blob(masks.data(), {1, 1}));
             value_preds = {3};
             rewards = {3};
             masks = {1};
-            storages[i].insert(torch::zeros({1, 4}),
-                               torch::zeros({1, 5}),
-                               torch::zeros({1, 1}),
-                               torch::zeros({1, 1}),
+            storages[i].insert(torch::rand({1, 4}),
+                               torch::rand({1, 5}),
+                               torch::rand({1, 1}),
+                               torch::rand({1, 1}),
                                torch::from_blob(value_preds.data(), {1, 1}),
                                torch::from_blob(rewards.data(), {1, 1}),
                                torch::from_blob(masks.data(), {1, 1}));
@@ -569,6 +569,14 @@ TEST_CASE("RolloutStorage")
         CHECK(combined_storage.get_masks().size(0) == 4);
         CHECK(combined_storage.get_masks().size(1) == 5);
         CHECK(combined_storage.get_masks().size(2) == 1);
+
+        for (int i = 0; i < 5; ++i)
+        {
+            CHECK((combined_storage.get_observations().narrow(1, i, 1) == storages[i].get_observations())
+                      .all()
+                      .item()
+                      .toBool());
+        }
     }
 }
 }
