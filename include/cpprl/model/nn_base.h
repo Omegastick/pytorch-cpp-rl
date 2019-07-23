@@ -11,9 +11,9 @@ namespace cpprl
 class NNBase : public nn::Module
 {
   private:
-    bool recurrent;
-    unsigned int hidden_size;
     nn::GRU gru;
+    unsigned int hidden_size;
+    bool recurrent;
 
   public:
     NNBase(bool recurrent,

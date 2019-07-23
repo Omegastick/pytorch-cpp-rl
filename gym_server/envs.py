@@ -138,7 +138,7 @@ def make_env(env_id, seed, rank):
     return _thunk
 
 
-def make_vec_envs(env_name, seed, num_processes, gamma, num_frame_stack=None):
+def make_vec_envs(env_name, seed, num_processes, num_frame_stack=None):
     envs = [make_env(env_name, seed, i) for i in range(num_processes)]
 
     if len(envs) > 1:
@@ -146,13 +146,7 @@ def make_vec_envs(env_name, seed, num_processes, gamma, num_frame_stack=None):
     else:
         envs = DummyVecEnv(envs)
 
-    if len(envs.observation_space.shape) == 1:
-        if gamma is None or gamma == -1:
-            envs = VecNormalize(envs, ret=False)
-        else:
-            envs = VecNormalize(envs, gamma=gamma)
-    else:
-        envs = VecRewardInfo(envs)
+    envs = VecRewardInfo(envs)
 
     if num_frame_stack is not None:
         envs = VecFrameStack(envs, num_frame_stack)

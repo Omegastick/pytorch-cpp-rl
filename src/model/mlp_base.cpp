@@ -12,10 +12,14 @@ MlpBase::MlpBase(unsigned int num_inputs,
     : NNBase(recurrent, num_inputs, hidden_size),
       actor(nullptr),
       critic(nullptr),
-      critic_linear(nullptr)
+      critic_linear(nullptr),
+      num_inputs(num_inputs)
 {
     if (recurrent)
     {
+        // If using a recurrent architecture, the inputs are first processed through
+        // a GRU layer, so the actor and critic parts of the network take the hidden
+        // size as their input size.
         num_inputs = hidden_size;
     }
 

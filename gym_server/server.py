@@ -53,8 +53,7 @@ class Server:
                                                  observation_space_shape))
 
             elif method == 'make':
-                self.__make(param['env_name'], param['num_envs'],
-                            param['gamma'])
+                self.__make(param['env_name'], param['num_envs'])
                 self.zmq_client.send(MakeMessage())
 
             elif method == 'reset':
@@ -86,12 +85,12 @@ class Server:
         return (action_space_type, action_space_shape, observation_space_type,
                 observation_space_shape)
 
-    def make(self, env_name, num_envs, gamma):
+    def make(self, env_name, num_envs):
         """
         Makes a vectorized environment of the type and number specified.
         """
         logging.info("Making %d %ss", num_envs, env_name)
-        self.env = make_vec_envs(env_name, 0, num_envs, gamma)
+        self.env = make_vec_envs(env_name, 0, num_envs)
 
     def reset(self) -> np.ndarray:
         """
@@ -109,6 +108,7 @@ class Server:
         """
         if isinstance(self.env.action_space, gym.spaces.Discrete):
             actions = actions.squeeze(-1)
+            actions = actions.astype(np.int)
         observation, reward, done, info = self.env.step(actions)
         reward = np.expand_dims(reward, -1)
         done = np.expand_dims(done, -1)

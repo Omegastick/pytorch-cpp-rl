@@ -25,9 +25,8 @@ struct InfoParam
 struct MakeParam
 {
     std::string env_name;
-    float gamma;
     int num_envs;
-    MSGPACK_DEFINE_MAP(env_name, gamma, num_envs);
+    MSGPACK_DEFINE_MAP(env_name, num_envs);
 };
 
 struct ResetParam

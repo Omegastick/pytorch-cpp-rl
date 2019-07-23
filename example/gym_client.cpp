@@ -16,26 +16,27 @@ using namespace cpprl;
 
 // Algorithm hyperparameters
 const std::string algorithm = "PPO";
-const int batch_size = 2048;
+const float actor_loss_coef = 1.0;
+const int batch_size = 40;
 const float clip_param = 0.2;
 const float discount_factor = 0.99;
-const float entropy_coef = 0.001;
+const float entropy_coef = 1e-3;
 const float gae = 0.95;
-const float learning_rate = 2.5e-4;
+const float kl_target = 0.05;
+const float learning_rate = 7e-4;
 const int log_interval = 1;
 const int max_frames = 10e+7;
-const int num_epoch = 10;
-const int num_mini_batch = 32;
+const int num_epoch = 3;
+const int num_mini_batch = 20;
 const int reward_average_window_size = 10;
+const float reward_clip_value = 10; // Post scaling
 const bool use_gae = true;
-const bool use_lr_decay = true;
-const float actor_loss_coef = 1.0;
+const bool use_lr_decay = false;
 const float value_loss_coef = 0.5;
 
 // Environment hyperparameters
-const float env_gamma = discount_factor; // Set to -1 to disable
-const std::string env_name = "BipedalWalkerHardcore-v2";
-const int num_envs = 16;
+const std::string env_name = "LunarLander-v2";
+const int num_envs = 8;
 const float render_reward_threshold = 160;
 
 // Model hyperparameters
@@ -80,7 +81,6 @@ int main(int argc, char *argv[])
     spdlog::info("Creating environment");
     auto make_param = std::make_shared<MakeParam>();
     make_param->env_name = env_name;
-    make_param->gamma = env_gamma;
     make_param->num_envs = num_envs;
     Request<MakeParam> make_request("make", make_param);
     communicator.send_request(make_request);
@@ -125,7 +125,17 @@ int main(int argc, char *argv[])
     }
     base->to(device);
     ActionSpace space{env_info->action_space_type, env_info->action_space_shape};
-    Policy policy(space, base);
+    Policy policy(nullptr);
+    if (env_info->observation_space_shape.size() == 1)
+    {
+        // With observation normalization
+        policy = Policy(space, base, true);
+    }
+    else
+    {
+        // Without observation normalization
+        policy = Policy(space, base, true);
+    }
     policy->to(device);
     RolloutStorage storage(batch_size, num_envs, env_info->observation_space_shape, space, hidden_size, device);
     std::unique_ptr<Algorithm> algo;
@@ -135,7 +145,17 @@ int main(int argc, char *argv[])
     }
     else if (algorithm == "PPO")
     {
-        algo = std::make_unique<PPO>(policy, clip_param, num_epoch, num_mini_batch, actor_loss_coef, value_loss_coef, entropy_coef, learning_rate);
+        algo = std::make_unique<PPO>(policy,
+                                     clip_param,
+                                     num_epoch,
+                                     num_mini_batch,
+                                     actor_loss_coef,
+                                     value_loss_coef,
+                                     entropy_coef,
+                                     learning_rate,
+                                     1e-8,
+                                     0.5,
+                                     kl_target);
     }
 
     storage.set_first_observation(observation);
@@ -144,6 +164,8 @@ int main(int argc, char *argv[])
     int episode_count = 0;
     bool render = false;
     std::vector<float> reward_history(reward_average_window_size);
+    RunningMeanStd returns_rms(1);
+    auto returns = torch::zeros({num_envs});
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
@@ -159,14 +181,21 @@ int main(int argc, char *argv[])
                                          storage.get_hidden_states()[step],
                                          storage.get_masks()[step]);
             }
-            auto actions_tensor = act_result[1].cpu();
+            auto actions_tensor = act_result[1].cpu().to(torch::kFloat);
             float *actions_array = actions_tensor.data<float>();
             std::vector<std::vector<float>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i)
             {
-                for (int j = 0; j < env_info->action_space_shape[0]; j++)
+                if (space.type == "Discrete")
                 {
-                    actions[i].push_back(actions_array[i * env_info->action_space_shape[0] + j]);
+                    actions[i] = {actions_array[i]};
+                }
+                else
+                {
+                    for (int j = 0; j < env_info->action_space_shape[0]; j++)
+                    {
+                        actions[i].push_back(actions_array[i * env_info->action_space_shape[0] + j]);
+                    }
                 }
             }
 
@@ -183,7 +212,13 @@ int main(int argc, char *argv[])
                 auto step_result = communicator.get_response<CnnStepResponse>();
                 observation_vec = flatten_vector(step_result->observation);
                 observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
-                rewards = flatten_vector(step_result->reward);
+                auto raw_reward_vec = flatten_vector(step_result->real_reward);
+                auto reward_tensor = torch::from_blob(raw_reward_vec.data(), {num_envs}, torch::kFloat);
+                returns = returns * discount_factor + reward_tensor;
+                returns_rms->update(returns);
+                reward_tensor = torch::clamp(reward_tensor / torch::sqrt(returns_rms->get_variance() + 1e-8),
+                                             -reward_clip_value, reward_clip_value);
+                rewards = std::vector<float>(reward_tensor.data<float>(), reward_tensor.data<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
             }
@@ -192,7 +227,13 @@ int main(int argc, char *argv[])
                 auto step_result = communicator.get_response<MlpStepResponse>();
                 observation_vec = flatten_vector(step_result->observation);
                 observation = torch::from_blob(observation_vec.data(), observation_shape).to(device);
-                rewards = flatten_vector(step_result->reward);
+                auto raw_reward_vec = flatten_vector(step_result->real_reward);
+                auto reward_tensor = torch::from_blob(raw_reward_vec.data(), {num_envs}, torch::kFloat);
+                returns = returns * discount_factor + reward_tensor;
+                returns_rms->update(returns);
+                reward_tensor = torch::clamp(reward_tensor / torch::sqrt(returns_rms->get_variance() + 1e-8),
+                                             -reward_clip_value, reward_clip_value);
+                rewards = std::vector<float>(reward_tensor.data<float>(), reward_tensor.data<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
             }
@@ -203,6 +244,7 @@ int main(int argc, char *argv[])
                 {
                     reward_history[episode_count % reward_average_window_size] = running_rewards[i];
                     running_rewards[i] = 0;
+                    returns[i] = 0;
                     episode_count++;
                 }
             }

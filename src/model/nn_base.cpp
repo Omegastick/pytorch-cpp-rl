@@ -11,7 +11,9 @@ namespace cpprl
 NNBase::NNBase(bool recurrent,
                unsigned int recurrent_input_size,
                unsigned int hidden_size)
-    : recurrent(recurrent), hidden_size(hidden_size), gru(nullptr)
+    : gru(nullptr),
+      hidden_size(hidden_size),
+      recurrent(recurrent)
 {
     // Init GRU
     if (recurrent)

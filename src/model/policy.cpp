@@ -1,21 +1,24 @@
 #include <torch/torch.h>
 
 #include "cpprl/model/policy.h"
+#include "cpprl/distributions/categorical.h"
 #include "cpprl/model/mlp_base.h"
 #include "cpprl/model/output_layers.h"
+#include "cpprl/observation_normalizer.h"
 #include "cpprl/spaces.h"
-#include "cpprl/distributions/categorical.h"
 #include "third_party/doctest.h"
 
 using namespace torch;
 
 namespace cpprl
 {
-PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
-    : base(base), action_space(action_space)
+PolicyImpl::PolicyImpl(ActionSpace action_space,
+                       std::shared_ptr<NNBase> base,
+                       bool normalize_observations)
+    : action_space(action_space),
+      base(register_module("base", base)),
+      observation_normalizer(nullptr)
 {
-    register_module("base", base);
-
     int num_outputs = action_space.shape[0];
     if (action_space.type == "Discrete")
     {
@@ -37,12 +40,24 @@ PolicyImpl::PolicyImpl(ActionSpace action_space, std::shared_ptr<NNBase> base)
         throw std::runtime_error("Action space " + action_space.type + " not supported");
     }
     register_module("output", output_layer);
+
+    if (normalize_observations)
+    {
+        // Normalized observations only supported for MlpBase
+        auto mlp_base = static_cast<MlpBase *>(base.get());
+        observation_normalizer = register_module("observation_normalizer", ObservationNormalizer(mlp_base->get_num_inputs()));
+    }
 }
 
 std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
                                            torch::Tensor rnn_hxs,
                                            torch::Tensor masks)
 {
+    if (observation_normalizer)
+    {
+        inputs = observation_normalizer->process_observation(inputs);
+    }
+
     auto base_output = base->forward(inputs, rnn_hxs, masks);
     auto dist = output_layer->forward(base_output[1]);
 
@@ -70,6 +85,11 @@ std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
                                                         torch::Tensor masks,
                                                         torch::Tensor actions)
 {
+    if (observation_normalizer)
+    {
+        inputs = observation_normalizer->process_observation(inputs);
+    }
+
     auto base_output = base->forward(inputs, rnn_hxs, masks);
     auto dist = output_layer->forward(base_output[1]);
 
@@ -98,6 +118,11 @@ torch::Tensor PolicyImpl::get_probs(torch::Tensor inputs,
                                     torch::Tensor rnn_hxs,
                                     torch::Tensor masks)
 {
+    if (observation_normalizer)
+    {
+        inputs = observation_normalizer->process_observation(inputs);
+    }
+
     auto base_output = base->forward(inputs, rnn_hxs, masks);
     auto dist = output_layer->forward(base_output[1]);
 
@@ -108,9 +133,20 @@ torch::Tensor PolicyImpl::get_values(torch::Tensor inputs,
                                      torch::Tensor rnn_hxs,
                                      torch::Tensor masks)
 {
+    if (observation_normalizer)
+    {
+        inputs = observation_normalizer->process_observation(inputs);
+    }
+
     auto base_output = base->forward(inputs, rnn_hxs, masks);
 
     return base_output[0];
+}
+
+void PolicyImpl::update_observation_normalizer(torch::Tensor observations)
+{
+    assert(!observation_normalizer.is_empty());
+    observation_normalizer->update(observations);
 }
 
 TEST_CASE("Policy")

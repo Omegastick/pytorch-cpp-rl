@@ -6,7 +6,7 @@
 
 #include "cpprl/running_mean_std.h"
 
-namespace SingularityTrainer
+namespace cpprl
 {
 class ObservationNormalizer;
 

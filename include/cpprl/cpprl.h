@@ -11,5 +11,6 @@
 #include "cpprl/model/nn_base.h"
 #include "cpprl/model/output_layers.h"
 #include "cpprl/model/policy.h"
+#include "cpprl/observation_normalizer.h"
 #include "cpprl/spaces.h"
 #include "cpprl/storage.h"

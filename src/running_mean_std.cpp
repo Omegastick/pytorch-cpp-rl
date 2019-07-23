@@ -3,7 +3,7 @@
 #include "cpprl/running_mean_std.h"
 #include "third_party/doctest.h"
 
-namespace SingularityTrainer
+namespace cpprl
 {
 RunningMeanStdImpl::RunningMeanStdImpl(int size)
     : count(register_buffer("count", torch::full({1}, 1e-4, torch::kFloat))),
@@ -34,12 +34,12 @@ void RunningMeanStdImpl::update_from_moments(torch::Tensor batch_mean,
     auto delta = batch_mean - mean;
     auto total_count = count + batch_count;
 
-    mean = mean + delta * batch_count / total_count;
+    mean.copy_(mean + delta * batch_count / total_count);
     auto m_a = variance * count;
     auto m_b = batch_var * batch_count;
     auto m2 = m_a + m_b + torch::pow(delta, 2) * count * batch_count / total_count;
-    variance = m2 / total_count;
-    count = total_count;
+    variance.copy_(m2 / total_count);
+    count.copy_(total_count);
 }
 
 TEST_CASE("RunningMeanStd")

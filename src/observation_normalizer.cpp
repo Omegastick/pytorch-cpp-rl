@@ -4,7 +4,7 @@
 #include "cpprl/running_mean_std.h"
 #include "third_party/doctest.h"
 
-namespace SingularityTrainer
+namespace cpprl
 {
 ObservationNormalizerImpl::ObservationNormalizerImpl(int size, float clip)
     : clip(register_buffer("clip", torch::full({1}, clip, torch::kFloat))),

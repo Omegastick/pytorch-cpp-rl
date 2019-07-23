@@ -16,6 +16,7 @@ class MlpBase : public NNBase
     nn::Sequential actor;
     nn::Sequential critic;
     nn::Linear critic_linear;
+    unsigned int num_inputs;
 
   public:
     MlpBase(unsigned int num_inputs,
@@ -25,5 +26,7 @@ class MlpBase : public NNBase
     std::vector<torch::Tensor> forward(torch::Tensor inputs,
                                        torch::Tensor hxs,
                                        torch::Tensor masks);
+
+    inline unsigned int get_num_inputs() const { return num_inputs; }
 };
 }

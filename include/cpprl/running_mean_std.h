@@ -4,7 +4,7 @@
 
 #include <torch/torch.h>
 
-namespace SingularityTrainer
+namespace cpprl
 {
 // https://github.com/openai/baselines/blob/master/baselines/common/running_mean_std.py
 class RunningMeanStdImpl : public torch::nn::Module
