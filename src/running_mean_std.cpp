@@ -5,19 +5,19 @@
 
 namespace SingularityTrainer
 {
-RunningMeanStd::RunningMeanStd(int size)
-    : count(1e-4),
-      mean(torch::zeros({size})),
-      variance(torch::ones({size})) {}
+RunningMeanStdImpl::RunningMeanStdImpl(int size)
+    : count(register_buffer("count", torch::full({1}, 1e-4, torch::kFloat))),
+      mean(register_buffer("mean", torch::zeros({size}))),
+      variance(register_buffer("variance", torch::ones({size}))) {}
 
-RunningMeanStd::RunningMeanStd(std::vector<float> means, std::vector<float> variances)
-    : count(1e-4),
-      mean(torch::from_blob(means.data(), {static_cast<long>(means.size())})
-               .clone()),
-      variance(torch::from_blob(variances.data(), {static_cast<long>(variances.size())})
-                   .clone()) {}
+RunningMeanStdImpl::RunningMeanStdImpl(std::vector<float> means, std::vector<float> variances)
+    : count(register_buffer("count", torch::full({1}, 1e-4, torch::kFloat))),
+      mean(register_buffer("mean", torch::from_blob(means.data(), {static_cast<long>(means.size())})
+                                       .clone())),
+      variance(register_buffer("variance", torch::from_blob(variances.data(), {static_cast<long>(variances.size())})
+                                               .clone())) {}
 
-void RunningMeanStd::update(torch::Tensor observation)
+void RunningMeanStdImpl::update(torch::Tensor observation)
 {
     observation = observation.reshape({-1, mean.size(0)});
     auto batch_mean = observation.mean(0);
@@ -27,12 +27,12 @@ void RunningMeanStd::update(torch::Tensor observation)
     update_from_moments(batch_mean, batch_var, batch_count);
 }
 
-void RunningMeanStd::update_from_moments(torch::Tensor batch_mean,
-                                         torch::Tensor batch_var,
-                                         int batch_count)
+void RunningMeanStdImpl::update_from_moments(torch::Tensor batch_mean,
+                                             torch::Tensor batch_var,
+                                             int batch_count)
 {
     auto delta = batch_mean - mean;
-    float total_count = count + batch_count;
+    auto total_count = count + batch_count;
 
     mean = mean + delta * batch_count / total_count;
     auto m_a = variance * count;
@@ -48,15 +48,15 @@ TEST_CASE("RunningMeanStd")
     {
         RunningMeanStd rms(5);
         auto observations = torch::rand({3, 5});
-        rms.update(observations[0]);
-        rms.update(observations[1]);
-        rms.update(observations[2]);
+        rms->update(observations[0]);
+        rms->update(observations[1]);
+        rms->update(observations[2]);
 
         auto expected_mean = observations.mean(0);
         auto expected_variance = observations.var(0, false, false);
 
-        auto actual_mean = rms.get_mean();
-        auto actual_variance = rms.get_variance();
+        auto actual_mean = rms->get_mean();
+        auto actual_variance = rms->get_variance();
 
         for (int i = 0; i < 5; ++i)
         {
@@ -71,10 +71,10 @@ TEST_CASE("RunningMeanStd")
 
     SUBCASE("Loads mean and variance from constructor correctly")
     {
-        RunningMeanStd rms({1, 2, 3}, {4, 5, 6});
+        RunningMeanStd rms(std::vector<float>{1, 2, 3}, std::vector<float>{4, 5, 6});
 
-        auto mean = rms.get_mean();
-        auto variance = rms.get_variance();
+        auto mean = rms->get_mean();
+        auto variance = rms->get_variance();
         DOCTEST_CHECK(mean[0].item().toFloat() == doctest::Approx(1));
         DOCTEST_CHECK(mean[1].item().toFloat() == doctest::Approx(2));
         DOCTEST_CHECK(mean[2].item().toFloat() == doctest::Approx(3));
