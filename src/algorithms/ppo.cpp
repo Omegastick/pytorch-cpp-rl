@@ -47,12 +47,6 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
     float clip_param = original_clip_param * decay_level;
     optimizer->options.learning_rate_ = original_learning_rate * decay_level;
 
-    // Update observation normalizer
-    if (policy->using_observation_normalizer())
-    {
-        policy->update_observation_normalizer(rollouts.get_observations());
-    }
-
     // Calculate advantages
     auto returns = rollouts.get_returns();
     auto value_preds = rollouts.get_value_predictions();
@@ -145,6 +139,12 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
     }
 
 finish_update:
+    // Update observation normalizer
+    if (policy->using_observation_normalizer())
+    {
+        policy->update_observation_normalizer(rollouts.get_observations());
+    }
+
     total_value_loss /= num_updates;
     total_action_loss /= num_updates;
     total_entropy /= num_updates;
