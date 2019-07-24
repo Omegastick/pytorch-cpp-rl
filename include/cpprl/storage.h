@@ -59,5 +59,16 @@ class RolloutStorage
     {
         return value_predictions;
     }
+    inline void set_actions(torch::Tensor actions) { this->actions = actions; }
+    inline void set_action_log_probs(torch::Tensor action_log_probs) { this->action_log_probs = action_log_probs; }
+    inline void set_hidden_states(torch::Tensor hidden_states) { this->hidden_states = hidden_states; }
+    inline void set_masks(torch::Tensor masks) { this->masks = masks; }
+    inline void set_observations(torch::Tensor observations) { this->observations = observations; }
+    inline void set_returns(torch::Tensor returns) { this->returns = returns; }
+    inline void set_rewards(torch::Tensor rewards) { this->rewards = rewards; }
+    inline void set_value_predictions(torch::Tensor value_predictions)
+    {
+        this->value_predictions = value_predictions;
+    }
 };
 }
