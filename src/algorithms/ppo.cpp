@@ -61,6 +61,7 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
     float total_entropy = 0;
     float kl_divergence = 0;
     float kl_early_stopped = -1;
+    float clip_fraction = 0;
     int num_updates = 0;
 
     // Epoch loop
@@ -107,11 +108,19 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
                                     mini_batch.action_log_probs);
 
             // PPO loss formula
-            auto surr_1 = ratio * mini_batch.advantages;
+            auto surr_1 = ratio * mini_batch.advantages.mean();
             auto surr_2 = (torch::clamp(ratio,
                                         1.0 - clip_param,
                                         1.0 + clip_param) *
-                           mini_batch.advantages);
+                           mini_batch.advantages)
+                              .mean();
+            clip_fraction += (ratio - 1.0)
+                                 .abs()
+                                 .gt(clip_param)
+                                 .to(torch::kFloat)
+                                 .mean()
+                                 .item()
+                                 .toFloat();
             auto action_loss = -torch::min(surr_1, surr_2).mean();
 
             // Value loss
@@ -148,11 +157,13 @@ finish_update:
     total_value_loss /= num_updates;
     total_action_loss /= num_updates;
     total_entropy /= num_updates;
+    clip_fraction /= num_updates;
 
     if (kl_early_stopped > -1)
     {
         return {{"Value loss", total_value_loss},
                 {"Action loss", total_action_loss},
+                {"Clip fraction", clip_fraction},
                 {"Entropy", total_entropy},
                 {"KL divergence", kl_divergence},
                 {"KL divergence early stop update", kl_early_stopped}};
@@ -161,6 +172,7 @@ finish_update:
     {
         return {{"Value loss", total_value_loss},
                 {"Action loss", total_action_loss},
+                {"Clip fraction", clip_fraction},
                 {"Entropy", total_entropy},
                 {"KL divergence", kl_divergence}};
     }
