@@ -40,7 +40,7 @@ torch::Tensor Normal::sample(c10::ArrayRef<int64_t> sample_shape)
 {
     auto shape = extended_shape(sample_shape);
     auto no_grad_guard = torch::NoGradGuard();
-    return torch::normal(loc.expand(shape), scale.expand(shape));
+    return at::normal(loc.expand(shape), scale.expand(shape));
 }
 
 TEST_CASE("Normal")
