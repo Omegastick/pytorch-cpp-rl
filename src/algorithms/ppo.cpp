@@ -54,7 +54,7 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
                        value_preds.narrow(0, 0, value_preds.size(0) - 1));
 
     // Normalize advantages
-    advantages = (advantages - advantages.mean() / (advantages.std() + 1e-5));
+    advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-5);
 
     float total_value_loss = 0;
     float total_action_loss = 0;
@@ -108,12 +108,11 @@ std::vector<UpdateDatum> PPO::update(RolloutStorage &rollouts, float decay_level
                                     mini_batch.action_log_probs);
 
             // PPO loss formula
-            auto surr_1 = ratio * mini_batch.advantages.mean();
+            auto surr_1 = ratio * mini_batch.advantages;
             auto surr_2 = (torch::clamp(ratio,
                                         1.0 - clip_param,
                                         1.0 + clip_param) *
-                           mini_batch.advantages)
-                              .mean();
+                           mini_batch.advantages);
             clip_fraction += (ratio - 1.0)
                                  .abs()
                                  .gt(clip_param)
