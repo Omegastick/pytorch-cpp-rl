@@ -81,8 +81,8 @@ std::vector<torch::Tensor> NNBase::forward_gru(torch::Tensor x,
         // has_zeros = [0] + has_zeros + [timesteps]
         has_zeros = has_zeros.contiguous().to(torch::kInt);
         std::vector<int> has_zeros_vec(
-            has_zeros.data<int>(),
-            has_zeros.data<int>() + has_zeros.numel());
+            has_zeros.data_ptr<int>(),
+            has_zeros.data_ptr<int>() + has_zeros.numel());
         has_zeros_vec.insert(has_zeros_vec.begin(), {0});
         has_zeros_vec.push_back(timesteps);
 

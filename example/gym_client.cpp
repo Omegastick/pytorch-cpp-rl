@@ -182,7 +182,7 @@ int main(int argc, char *argv[])
                                          storage.get_masks()[step]);
             }
             auto actions_tensor = act_result[1].cpu().to(torch::kFloat);
-            float *actions_array = actions_tensor.data<float>();
+            float *actions_array = actions_tensor.data_ptr<float>();
             std::vector<std::vector<float>> actions(num_envs);
             for (int i = 0; i < num_envs; ++i)
             {
@@ -218,7 +218,7 @@ int main(int argc, char *argv[])
                 returns_rms->update(returns);
                 reward_tensor = torch::clamp(reward_tensor / torch::sqrt(returns_rms->get_variance() + 1e-8),
                                              -reward_clip_value, reward_clip_value);
-                rewards = std::vector<float>(reward_tensor.data<float>(), reward_tensor.data<float>() + reward_tensor.numel());
+                rewards = std::vector<float>(reward_tensor.data_ptr<float>(), reward_tensor.data_ptr<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
             }
@@ -233,7 +233,7 @@ int main(int argc, char *argv[])
                 returns_rms->update(returns);
                 reward_tensor = torch::clamp(reward_tensor / torch::sqrt(returns_rms->get_variance() + 1e-8),
                                              -reward_clip_value, reward_clip_value);
-                rewards = std::vector<float>(reward_tensor.data<float>(), reward_tensor.data<float>() + reward_tensor.numel());
+                rewards = std::vector<float>(reward_tensor.data_ptr<float>(), reward_tensor.data_ptr<float>() + reward_tensor.numel());
                 real_rewards = flatten_vector(step_result->real_reward);
                 dones_vec = step_result->done;
             }

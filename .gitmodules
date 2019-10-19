@@ -1,7 +1,7 @@
-[submodule "lib/spdlog"]
+[submodule "example/lib/spdlog"]
 	path = example/lib/spdlog
 	url = git@github.com:gabime/spdlog.git
-[submodule "lib/msgpack-c"]
+[submodule "example/lib/msgpack-c"]
 	path = example/lib/msgpack-c
 	url = git@github.com:msgpack/msgpack-c.git
 [submodule "example/lib/libzmq"]

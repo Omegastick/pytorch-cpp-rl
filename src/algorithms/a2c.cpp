@@ -36,7 +36,7 @@ A2C::A2C(Policy &policy,
 std::vector<UpdateDatum> A2C::update(RolloutStorage &rollouts, float decay_level)
 {
     // Decay learning rate
-    optimizer->options.learning_rate_ = original_learning_rate * decay_level;
+    optimizer->options.learning_rate(original_learning_rate * decay_level);
 
     // Prep work
     auto full_obs_shape = rollouts.get_observations().sizes();

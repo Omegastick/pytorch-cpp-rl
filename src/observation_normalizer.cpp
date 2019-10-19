@@ -76,13 +76,13 @@ torch::Tensor ObservationNormalizerImpl::process_observation(torch::Tensor obser
 std::vector<float> ObservationNormalizerImpl::get_mean() const
 {
     auto mean = rms->get_mean();
-    return std::vector<float>(mean.data<float>(), mean.data<float>() + mean.numel());
+    return std::vector<float>(mean.data_ptr<float>(), mean.data_ptr<float>() + mean.numel());
 }
 
 std::vector<float> ObservationNormalizerImpl::get_variance() const
 {
     auto variance = rms->get_variance();
-    return std::vector<float>(variance.data<float>(), variance.data<float>() + variance.numel());
+    return std::vector<float>(variance.data_ptr<float>(), variance.data_ptr<float>() + variance.numel());
 }
 
 void ObservationNormalizerImpl::update(torch::Tensor observations)
