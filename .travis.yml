@@ -20,7 +20,7 @@ before_install:
   - wget -O cmake.sh https://cmake.org/files/v3.10/cmake-3.10.0-rc1-Linux-x86_64.sh
   - sudo sh cmake.sh --skip-license --exclude-subdir --prefix=/usr/local
   # Install libtorch
-  - wget https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-latest.zip -O /tmp/libtorch.zip
+  - wget https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-1.3.0%2Bcpu.zip -O /tmp/libtorch.zip
   - unzip /tmp/libtorch.zip -d /tmp/
   # Install cppcheck
   - git clone https://github.com/danmar/cppcheck /tmp/cppcheck && cd /tmp/cppcheck && git checkout 1.87 && cd -
