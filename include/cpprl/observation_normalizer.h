@@ -23,7 +23,7 @@ class ObservationNormalizerImpl : public torch::nn::Module
                               float clip = 10.);
     explicit ObservationNormalizerImpl(const std::vector<ObservationNormalizer> &others);
 
-    torch::Tensor process_observation(torch::Tensor observation);
+    torch::Tensor process_observation(torch::Tensor observation) const;
     std::vector<float> get_mean() const;
     std::vector<float> get_variance() const;
     void update(torch::Tensor observations);

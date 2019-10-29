@@ -66,7 +66,7 @@ ObservationNormalizerImpl::ObservationNormalizerImpl(const std::vector<Observati
     rms->set_count(total_count);
 }
 
-torch::Tensor ObservationNormalizerImpl::process_observation(torch::Tensor observation)
+torch::Tensor ObservationNormalizerImpl::process_observation(torch::Tensor observation) const
 {
     auto normalized_obs = (observation - rms->get_mean()) /
                           torch::sqrt(rms->get_variance() + 1e-8);

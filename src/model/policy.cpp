@@ -51,7 +51,7 @@ PolicyImpl::PolicyImpl(ActionSpace action_space,
 
 std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
                                            torch::Tensor rnn_hxs,
-                                           torch::Tensor masks)
+                                           torch::Tensor masks) const
 {
     if (observation_normalizer)
     {
@@ -83,7 +83,7 @@ std::vector<torch::Tensor> PolicyImpl::act(torch::Tensor inputs,
 std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
                                                         torch::Tensor rnn_hxs,
                                                         torch::Tensor masks,
-                                                        torch::Tensor actions)
+                                                        torch::Tensor actions) const
 {
     if (observation_normalizer)
     {
@@ -116,7 +116,7 @@ std::vector<torch::Tensor> PolicyImpl::evaluate_actions(torch::Tensor inputs,
 
 torch::Tensor PolicyImpl::get_probs(torch::Tensor inputs,
                                     torch::Tensor rnn_hxs,
-                                    torch::Tensor masks)
+                                    torch::Tensor masks) const
 {
     if (observation_normalizer)
     {
@@ -131,7 +131,7 @@ torch::Tensor PolicyImpl::get_probs(torch::Tensor inputs,
 
 torch::Tensor PolicyImpl::get_values(torch::Tensor inputs,
                                      torch::Tensor rnn_hxs,
-                                     torch::Tensor masks)
+                                     torch::Tensor masks) const
 {
     if (observation_normalizer)
     {

@@ -33,17 +33,17 @@ class PolicyImpl : public nn::Module
 
     std::vector<torch::Tensor> act(torch::Tensor inputs,
                                    torch::Tensor rnn_hxs,
-                                   torch::Tensor masks);
+                                   torch::Tensor masks) const;
     std::vector<torch::Tensor> evaluate_actions(torch::Tensor inputs,
                                                 torch::Tensor rnn_hxs,
                                                 torch::Tensor masks,
-                                                torch::Tensor actions);
+                                                torch::Tensor actions) const;
     torch::Tensor get_probs(torch::Tensor inputs,
                             torch::Tensor rnn_hxs,
-                            torch::Tensor masks);
+                            torch::Tensor masks) const;
     torch::Tensor get_values(torch::Tensor inputs,
                              torch::Tensor rnn_hxs,
-                             torch::Tensor masks);
+                             torch::Tensor masks) const;
     void update_observation_normalizer(torch::Tensor observations);
 
     inline bool is_recurrent() const { return base->is_recurrent(); }
