@@ -1,9 +1,9 @@
 [submodule "example/lib/spdlog"]
 	path = example/lib/spdlog
-	url = git@github.com:gabime/spdlog.git
+	url = https://github.com/gabime/spdlog.git
 [submodule "example/lib/msgpack-c"]
 	path = example/lib/msgpack-c
-	url = git@github.com:msgpack/msgpack-c.git
+	url = https://github.com/msgpack/msgpack-c.git
 [submodule "example/lib/libzmq"]
 	path = example/lib/libzmq
-	url = git@github.com:zeromq/libzmq.git
+	url = https://github.com/zeromq/libzmq.git
