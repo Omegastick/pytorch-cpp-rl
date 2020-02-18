@@ -13,7 +13,7 @@ before_build:
   - sed -i 's/git@github.com:/https:\/\/github.com\//' .gitmodules
   - git submodule update --init --recursive
   # Install libtorch
-  - curl -fsS -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-win-shared-with-deps-1.4.0.zip
+  - curl -fsS -o libtorch.zip https://download.pytorch.org/libtorch/cpu/libtorch-shared-with-deps-1.4.0%2Bcpu.zip
   - 7z x libtorch.zip -y -oC:\
   - set PATH=C:\libtorch\lib;%PATH%
   # Run CMake
