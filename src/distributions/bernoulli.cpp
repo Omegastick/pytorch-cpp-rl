@@ -43,13 +43,13 @@ Bernoulli::Bernoulli(const torch::Tensor *probs,
 
 torch::Tensor Bernoulli::entropy()
 {
-    return torch::binary_cross_entropy_with_logits(logits, probs, torch::Tensor(), torch::Tensor(), Reduction::None);
+    return torch::binary_cross_entropy_with_logits(logits, probs, torch::Tensor(), torch::Tensor(), torch::Reduction::None);
 }
 
 torch::Tensor Bernoulli::log_prob(torch::Tensor value)
 {
     auto broadcasted_tensors = torch::broadcast_tensors({logits, value});
-    return -torch::binary_cross_entropy_with_logits(broadcasted_tensors[0], broadcasted_tensors[1], torch::Tensor(), torch::Tensor(), Reduction::None);
+    return -torch::binary_cross_entropy_with_logits(broadcasted_tensors[0], broadcasted_tensors[1], torch::Tensor(), torch::Tensor(), torch::Reduction::None);
 }
 
 torch::Tensor Bernoulli::sample(c10::ArrayRef<int64_t> sample_shape)
