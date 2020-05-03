@@ -34,7 +34,7 @@ Terminal 1:
 ```
 Terminal 2:
 ```bash
-build/example/gym_server
+build/example/gym_client
 ```
 
 It takes about 60 seconds to train an agent to 200 average reward on my laptop (i7-8550U processor).
